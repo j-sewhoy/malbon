@@ -179,6 +179,12 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           description: 'GlobalE Duties Subsidy',
           amount: parseFloat(attr.value)
         })
+        newLineItems.push({
+          type: 'fee_item',
+          sku: 'GlobalE Duties Subsidy Clearing',
+          description: 'GlobalE Duties Subsidy Clearing',
+          amount: -1*parseFloat(attr.value)
+        })
       }
       if (attr.key === 'Global-e Additional Fees' && parseFloat(attr.value) !== 0) {
         newLineItems.push({
