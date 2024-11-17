@@ -1,6 +1,11 @@
 function transformShopifyOrderData(options) {
+  //set parameters
+  var storeUrl = 'https://malbon.myshopify.com/admin/orders/';
+  
   // Extract the order data from options.postResponseMapData[0].orderDetailsLookup
   var order = options.postResponseMapData[0].orderDetailsLookup;
+
+  var orderUrl = storeUrl.concat(order.legacyResourceId);
 
   // Initialize variables for totals
   var totalLineAmount = 0;
@@ -260,6 +265,8 @@ variance = Number(variance.toFixed(2));
       amount: variance
     });
   }
+
+  order.orderUrl = orderUrl;
 
   // Replace original line items with new ones
   order.line_items_to_import = newLineItems;
