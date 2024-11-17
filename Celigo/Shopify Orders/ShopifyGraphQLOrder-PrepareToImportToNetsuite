@@ -80,7 +80,8 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
         amount: lineSubtotal,
         taxes: lineTaxes,
         duties: lineDuties,
-        taxRate: Number((lineTaxRate * 100).toFixed(6))
+        taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(6)
+      //  taxRate: Number((lineTaxRate * 100).toFixed(6))
       });
 
       // Create discount line beneath inventory item
@@ -176,7 +177,7 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           sku: 'DUTIES_SUBSIDY',
           description: 'Global-e Duties Subsidy',
           amount: parseFloat(attr.value),
-        });
+        })
       }
       if (attr.key === 'Global-e Additional Fees' && parseFloat(attr.value) !== 0) {
         newLineItems.push({
@@ -185,8 +186,21 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           description: 'Global-e Additional Fees',
           amount: parseFloat(attr.value),
         });
+        totalTaxes += parseFloat(attr.value);
       }
     });
+  }
+  
+  
+  // Handle additional fees (i.e., GlobalE)
+  if (order.original_total_additional_fees_set && parseFloat(order.original_total_additional_fees_set.shop_money.amount) !== 0) {
+        newLineItems.push({
+          type: 'fee_item',
+          sku: 'ADDITIONAL_FEES',
+          description: 'Global-e Additional Fees',
+          amount: parseFloat(order.original_total_additional_fees_set.shop_money.amount),
+        });
+        totalTaxes += parseFloat(order.original_total_additional_fees_set.shop_money.amount);
   }
 
   // Differentiate between online orders and POS orders
