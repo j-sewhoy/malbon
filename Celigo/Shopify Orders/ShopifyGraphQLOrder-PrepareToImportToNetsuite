@@ -80,8 +80,8 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
         amount: lineSubtotal,
         taxes: lineTaxes,
         duties: lineDuties,
-        taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(6)
-      //  taxRate: Number((lineTaxRate * 100).toFixed(6))
+        taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(3)
+      //  taxRate: Number((lineTaxRate * 100).toFixed(3))
       });
 
       // Create discount line beneath inventory item
@@ -91,7 +91,8 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           sku: 'Shopify Discount Item',
           description: 'Discount for ' + lineItem.title,
           amount: -lineDiscount,
-        taxRate: Number((lineTaxRate * 100).toFixed(6))
+          taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(3)
+        //taxRate: Number((lineTaxRate * 100).toFixed(3))
         });
       }
     });
@@ -123,7 +124,7 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
         description: shippingLine.title,
         amount: shippingAmount,
         taxes: shippingTaxes,
-        taxRate: Number((shippingTaxRate * 100).toFixed(6)) // Convert from decimal to percentage and round
+        taxRate: Number((shippingTaxRate * 100).toFixed(3)) // Convert from decimal to percentage and round
       });
 
       // Handle shipping discounts
