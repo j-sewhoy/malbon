@@ -88,7 +88,7 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
       if (lineDiscount > 0) {
         newLineItems.push({
           type: 'discount_item',
-          sku: 'Shopify Discount Item',
+          sku: 'Shopify Item Discount',
           description: 'Discount for ' + lineItem.title,
           amount: -lineDiscount,
           taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(3)
@@ -120,7 +120,7 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
 
       newLineItems.push({
         type: 'shipping_item',
-        sku: 'SHIPPING',
+        sku: 'Shopify Shipping',
         description: shippingLine.title,
         amount: shippingAmount,
         taxes: shippingTaxes,
@@ -139,9 +139,9 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
       if (shippingDiscount > 0) {
         newLineItems.push({
           type: 'discount_item',
-          sku: 'DISCOUNT',
+          sku: 'Shopify Shipping Discount',
           description: 'Shipping Discount',
-          amount: -shippingDiscount,
+          amount: -shippingDiscount
         });
         totalDiscounts += shippingDiscount;
       }
@@ -160,9 +160,9 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
       if (taxLine.title === 'Colorado Retail Delivery Fee') {
         newLineItems.push({
           type: 'fee_item',
-          sku: 'CO_RETAIL_TAX',
+          sku: 'Shopify Special Regional Tax',
           description: taxLine.title,
-          amount: parseFloat(taxLine.priceSet.shopMoney.amount),
+          amount: parseFloat(taxLine.priceSet.shopMoney.amount)
         });
         totalTaxes += parseFloat(taxLine.priceSet.shopMoney.amount);
       }
@@ -175,17 +175,17 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
       if (attr.key === 'CalculatedDutiesSubsidy' && parseFloat(attr.value) !== 0) {
         newLineItems.push({
           type: 'fee_item',
-          sku: 'DUTIES_SUBSIDY',
-          description: 'Global-e Duties Subsidy',
-          amount: parseFloat(attr.value),
+          sku: 'GlobalE Duties Subsidy',
+          description: 'GlobalE Duties Subsidy',
+          amount: parseFloat(attr.value)
         })
       }
       if (attr.key === 'Global-e Additional Fees' && parseFloat(attr.value) !== 0) {
         newLineItems.push({
           type: 'fee_item',
-          sku: 'ADDITIONAL_FEES',
-          description: 'Global-e Additional Fees',
-          amount: parseFloat(attr.value),
+          sku: 'GlobalE Additional Fees',
+          description: 'GlobalE Additional Fees',
+          amount: parseFloat(attr.value)
         });
         totalTaxes += parseFloat(attr.value);
       }
@@ -194,14 +194,14 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
   
   
   // Handle additional fees (i.e., GlobalE)
-  if (order.original_total_additional_fees_set && parseFloat(order.original_total_additional_fees_set.shop_money.amount) !== 0) {
+  if (order.originalTotalAdditionalFeesSet && parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount) !== 0) {
         newLineItems.push({
           type: 'fee_item',
-          sku: 'ADDITIONAL_FEES',
-          description: 'Global-e Additional Fees',
-          amount: parseFloat(order.original_total_additional_fees_set.shop_money.amount),
+          sku: 'GlobalE Additional Fees',
+          description: 'GlobalE Additional Fees',
+          amount: parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount),
         });
-        totalTaxes += parseFloat(order.original_total_additional_fees_set.shop_money.amount);
+        totalTaxes += parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount);
   }
 
   // Differentiate between online orders and POS orders
@@ -231,7 +231,7 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           authorizationCode: transaction.authorizationCode,
           parentTransaction: transaction.parentTransaction,
           presentmentAmount: parseFloat(transaction.amountSet.presentmentMoney.amount),
-          amount: parseFloat(transaction.amountSet.shopMoney.amount),
+          amount: parseFloat(transaction.amountSet.shopMoney.amount)
         });
       }
     });
@@ -249,9 +249,9 @@ variance = Number(variance.toFixed(2));
   if (Math.abs(variance) > 0.01) {
     newLineItems.push({
       type: 'variance_item',
-      sku: 'VARIANCE',
-      description: 'Variance Adjustment',
-      amount: variance,
+      sku: 'Shopify Variance',
+      description: 'Shopify Variance Adjustment',
+      amount: variance
     });
   }
 
