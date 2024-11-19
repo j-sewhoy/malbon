@@ -1,17 +1,21 @@
 function transformShopifyOrderData(options) {
   //set parameters
-  var storeUrl = 'https://malbon.myshopify.com/admin/orders/';
-  
+  const storeUrl = 'https://malbon.myshopify.com/admin/orders/';
+  const webBrand = 'Malbon Web';
+
   // Extract the order data from options.postResponseMapData[0].orderDetailsLookup
   var order = options.postResponseMapData[0].orderDetailsLookup;
 
   var orderUrl = storeUrl.concat(order.legacyResourceId);
+
+  var orderSourceLocation = (order.retailLocation && order.retailLocation.id) ? order.retailLocation.id.replace('gid://shopify/Location/', '') : webBrand;
 
   // Initialize variables for totals
   var totalLineAmount = 0;
   var totalDiscounts = 0;
   var totalTaxes = 0;
   var totalShippingAmount = 0;
+  var totalShippingDiscounts = 0;
   var totalShippingTaxes = 0;
 
   // Calculate total order-level discount
@@ -40,9 +44,10 @@ function transformShopifyOrderData(options) {
       var lineDiscount = 0;
       if (lineItem.discountAllocations && lineItem.discountAllocations.length > 0) {
         lineItem.discountAllocations.forEach(function (discountAllocation) {
-if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amount) {
-  lineDiscount += parseFloat(discountAllocation.allocatedAmount.amount);
-}        });
+          if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amount) {
+            lineDiscount += parseFloat(discountAllocation.allocatedAmount.amount);
+          }
+        });
       }
 
       // Allocate order-level discount proportionally
@@ -85,8 +90,16 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
         amount: lineSubtotal,
         taxes: lineTaxes,
         duties: lineDuties,
-        taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(3)
-      //  taxRate: Number((lineTaxRate * 100).toFixed(3))
+        taxRate: (
+          lineTaxes &&
+          lineSubtotal &&
+          lineDiscount !== undefined &&
+          (lineSubtotal - lineDiscount) > 0
+        )
+          ? ((lineTaxes / (lineSubtotal - lineDiscount)) * 100).toFixed(3) : "0.000"
+
+        //taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(3)
+        //  taxRate: Number((lineTaxRate * 100).toFixed(3))
       });
 
       // Create discount line beneath inventory item
@@ -95,9 +108,18 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           type: 'discount_item',
           sku: 'Shopify Item Discount',
           description: 'Discount for ' + lineItem.title,
+          rate: -lineDiscount,
           amount: -lineDiscount,
-          taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(3)
-        //taxRate: Number((lineTaxRate * 100).toFixed(3))
+          quantity: 1,
+          taxRate: (
+          lineTaxes &&
+          lineSubtotal &&
+          lineDiscount !== undefined &&
+          (lineSubtotal - lineDiscount) > 0
+        )
+          ? ((lineTaxes / (lineSubtotal - lineDiscount)) * 100).toFixed(3) : "0.000"
+          // taxRate: ((lineTaxes / (lineSubtotal - lineDiscount)) * 100).toFixed(3)
+          //taxRate: Number((lineTaxRate * 100).toFixed(3))
         });
       }
     });
@@ -109,8 +131,7 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
       var shippingLine = shippingLineEdge.node;
 
       var shippingAmount = parseFloat(shippingLine.originalPriceSet.shopMoney.amount);
-      totalShippingAmount += shippingAmount;
-
+      
       // Aggregate shipping taxes
       var shippingTaxes = 0;
       var shippingTaxRate = 0;
@@ -120,17 +141,30 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           shippingTaxRate += parseFloat(taxLine.rate);
         });
       }
-
-      totalShippingTaxes += shippingTaxes;
+      
+      if (shippingAmount > 0) {
+        totalShippingAmount += shippingAmount;
+        totalShippingTaxes += shippingTaxes;
 
       newLineItems.push({
         type: 'shipping_item',
         sku: 'Shopify Shipping',
         description: shippingLine.title,
+        rate: shippingAmount,
         amount: shippingAmount,
+        quantity: 1,
         taxes: shippingTaxes,
-        taxRate: Number((shippingTaxRate * 100).toFixed(3)) // Convert from decimal to percentage and round
-      });
+        taxRate: (
+          shippingTaxes &&
+          shippingAmount &&
+          shippingAmount > 0 &&
+          shippingAmoung !== undefined
+        )
+          ? ((shippingTaxes / shippingAmount) * 100).toFixed(3) : "0.000"
+          
+        //taxRate: Number((shippingTaxRate * 100).toFixed(3)) // Convert from decimal to percentage and round
+      })
+      };
 
       // Handle shipping discounts
       var shippingDiscount = 0;
@@ -146,14 +180,17 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           type: 'discount_item',
           sku: 'Shopify Shipping Discount',
           description: 'Shipping Discount',
-          amount: -shippingDiscount
+          amount: -shippingDiscount,
+          rate: -shippingDiscount,
+          quantity: 1
         });
-        totalDiscounts += shippingDiscount;
+        totalShippingDiscounts += shippingDiscount;
       }
     });
   }
 
-  // Update total taxes
+  // Update totals
+  totalDiscounts += totalShippingDiscounts;
   totalTaxes += totalShippingTaxes;
 
   // Update total line amount
@@ -167,7 +204,9 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           type: 'fee_item',
           sku: 'Shopify Special Regional Tax',
           description: taxLine.title,
-          amount: parseFloat(taxLine.priceSet.shopMoney.amount)
+          amount: parseFloat(taxLine.priceSet.shopMoney.amount),
+          rate: parseFloat(taxLine.priceSet.shopMoney.amount),
+          quantity: 1
         });
         totalTaxes += parseFloat(taxLine.priceSet.shopMoney.amount);
       }
@@ -182,13 +221,17 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           type: 'fee_item',
           sku: 'GlobalE Duties Subsidy',
           description: 'GlobalE Duties Subsidy',
-          amount: parseFloat(attr.value)
+          amount: parseFloat(attr.value),
+          rate: parseFloat(attr.value),
+          quantity: 1
         })
         newLineItems.push({
           type: 'fee_item',
           sku: 'GlobalE Duties Subsidy Clearing',
           description: 'GlobalE Duties Subsidy Clearing',
-          amount: -1*parseFloat(attr.value)
+          amount: -1 * parseFloat(attr.value),
+          rate: -1 * parseFloat(attr.value),
+          quantity: 1
         })
       }
       if (attr.key === 'Global-e Additional Fees' && parseFloat(attr.value) !== 0) {
@@ -196,23 +239,27 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
           type: 'fee_item',
           sku: 'GlobalE Additional Fees',
           description: 'GlobalE Additional Fees',
-          amount: parseFloat(attr.value)
+          amount: parseFloat(attr.value),
+          rate: parseFloat(attr.value),
+          quantity: 1
         });
         totalTaxes += parseFloat(attr.value);
       }
     });
   }
-  
-  
+
+
   // Handle additional fees (i.e., GlobalE)
   if (order.originalTotalAdditionalFeesSet && parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount) !== 0) {
-        newLineItems.push({
-          type: 'fee_item',
-          sku: 'GlobalE Additional Fees',
-          description: 'GlobalE Additional Fees',
-          amount: parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount),
-        });
-        totalTaxes += parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount);
+    newLineItems.push({
+      type: 'fee_item',
+      sku: 'GlobalE Additional Fees',
+      description: 'GlobalE Additional Fees',
+      amount: parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount),
+      rate: parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount),
+      quantity: 1
+    });
+    totalTaxes += parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount);
   }
 
   // Differentiate between online orders and POS orders
@@ -253,10 +300,10 @@ if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amo
   var calculatedTotal = totalLineAmount - totalDiscounts + totalTaxes;
   var shopifyTotal = parseFloat(order.totalPriceSet.shopMoney.amount);
   var variance = shopifyTotal - calculatedTotal;
-  
+
   // Round variance to two decimal places
-variance = Number(variance.toFixed(2));
-  
+  variance = Number(variance.toFixed(2));
+
   if (Math.abs(variance) > 0.01) {
     newLineItems.push({
       type: 'variance_item',
@@ -267,11 +314,14 @@ variance = Number(variance.toFixed(2));
   }
 
   order.orderUrl = orderUrl;
+  
+  order.orderSourceLocation = orderSourceLocation;
 
   // Replace original line items with new ones
   order.line_items_to_import = newLineItems;
 
   // Assign the transformed order back to options.postResponseMapData
   options.postResponseMapData[0].orderDetailsLookup = order
-    return options.postResponseMapData}
+  return options.postResponseMapData
+}
 
