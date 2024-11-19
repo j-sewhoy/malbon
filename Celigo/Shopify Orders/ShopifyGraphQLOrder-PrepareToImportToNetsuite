@@ -1,128 +1,515 @@
 function transformShopifyOrderData(options) {
-  //set parameters
+
+  // Set parameters
+
   const storeUrl = 'https://malbon.myshopify.com/admin/orders/';
+
   const webBrand = 'Malbon Web';
 
+
+
   // Extract the order data from options.postResponseMapData[0].orderDetailsLookup
+
   var order = options.postResponseMapData[0].orderDetailsLookup;
+
+
 
   var orderUrl = storeUrl.concat(order.legacyResourceId);
 
+
+
   var orderSourceLocation = (order.retailLocation && order.retailLocation.id) ? order.retailLocation.id.replace('gid://shopify/Location/', '') : webBrand;
 
+
+
   // Initialize variables for totals
+
   var totalLineAmount = 0;
+
   var totalDiscounts = 0;
+
   var totalTaxes = 0;
+
   var totalShippingAmount = 0;
+
   var totalShippingDiscounts = 0;
+
   var totalShippingTaxes = 0;
 
+
+
   // Calculate total order-level discount
+
   var totalOrderDiscount = 0;
+
   if (order.discountApplications && order.discountApplications.edges.length > 0) {
+
     order.discountApplications.edges.forEach(function (discountEdge) {
+
       var discount = discountEdge.node;
+
       if (discount.valueType === 'FIXED_AMOUNT') {
-        totalOrderDiscount += parseFloat(discount.value);
+
+        totalOrderDiscount += parseFloat(discount.value) || 0;
+
       } else if (discount.valueType === 'PERCENTAGE') {
-        totalOrderDiscount += (parseFloat(discount.value) / 100) * parseFloat(order.subtotalPriceSet.shopMoney.amount);
+
+        totalOrderDiscount += ((parseFloat(discount.value) || 0) / 100) * (parseFloat(order.subtotalPriceSet.shopMoney.amount) || 0);
+
       }
+
     });
+
   }
 
-  // Process each line item
-  var newLineItems = [];
-  if (order.lineItems && order.lineItems.edges.length > 0) {
-    order.lineItems.edges.forEach(function (lineItemEdge) {
-      var lineItem = lineItemEdge.node;
 
-      // Calculate line subtotal
-      var lineSubtotal = parseFloat(lineItem.originalUnitPriceSet.shopMoney.amount) * lineItem.quantity;
 
-      // Aggregate line-level discounts
-      var lineDiscount = 0;
-      if (lineItem.discountAllocations && lineItem.discountAllocations.length > 0) {
-        lineItem.discountAllocations.forEach(function (discountAllocation) {
-          if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amount) {
-            lineDiscount += parseFloat(discountAllocation.allocatedAmount.amount);
-          }
-        });
-      }
+  // Function to map fulfillment locations to line items
 
-      // Allocate order-level discount proportionally
-      var subtotalPrice = parseFloat(order.subtotalPriceSet.shopMoney.amount);
-      var proportionalDiscount = 0;
-      if (subtotalPrice > 0) {
-        proportionalDiscount = (lineSubtotal / subtotalPrice) * totalOrderDiscount;
-        lineDiscount += proportionalDiscount;
-      }
+  function mapFulfillmentLocationsToLineItems(order) {
 
-      // Aggregate taxes and duties per line
-      var lineTaxes = 0;
-      var lineTaxRate = 0;
-      if (lineItem.taxLines && lineItem.taxLines.length > 0) {
-        lineItem.taxLines.forEach(function (taxLine) {
-          lineTaxes += parseFloat(taxLine.priceSet.shopMoney.amount);
-          lineTaxRate += parseFloat(taxLine.rate);
-        });
-      }
+    // Map to hold line items with their fulfillment locations
 
-      var lineDuties = 0;
-      if (lineItem.duties && lineItem.duties.length > 0) {
-        lineItem.duties.forEach(function (duty) {
-          lineDuties += parseFloat(duty.price.shopMoney.amount);
-        });
-      }
+    const lineItemsMap = {};
 
-      // Update totals
-      totalLineAmount += lineSubtotal;
-      totalDiscounts += lineDiscount;
-      totalTaxes += lineTaxes + lineDuties;
 
-      // Create inventory line item
-      newLineItems.push({
-        type: 'inventory_item',
-        sku: lineItem.sku,
-        description: lineItem.title,
-        quantity: lineItem.quantity,
-        rate: parseFloat(lineItem.originalUnitPriceSet.shopMoney.amount),
-        amount: lineSubtotal,
-        taxes: lineTaxes,
-        duties: lineDuties,
-        taxRate: (
-          lineTaxes &&
-          lineSubtotal &&
-          lineDiscount !== undefined &&
-          (lineSubtotal - lineDiscount) > 0
-        )
-          ? ((lineTaxes / (lineSubtotal - lineDiscount)) * 100).toFixed(3) : "0.000"
 
-        //taxRate: ((lineTaxes / (lineSubtotal - lineDiscount))*100).toFixed(3)
-        //  taxRate: Number((lineTaxRate * 100).toFixed(3))
+    // Initialize the map with line item IDs
+
+    order.lineItems.edges.forEach((edge) => {
+
+      const lineItem = edge.node;
+
+      lineItemsMap[lineItem.id] = {
+
+        lineItem: lineItem,
+
+        fulfillmentLocations: [] // Will store location and quantity info
+
+      };
+
+    });
+
+
+
+    // Process fulfillments (already fulfilled items)
+
+    if (order.fulfillments && order.fulfillments.edges.length > 0) {
+
+      order.fulfillments.edges.forEach((fulfillmentEdge) => {
+
+        const fulfillment = fulfillmentEdge.node;
+
+        const location = fulfillment.location;
+
+        if (!location) return; // Skip if location is not available
+
+
+
+        if (fulfillment.lineItems && fulfillment.lineItems.edges.length > 0) {
+
+          fulfillment.lineItems.edges.forEach((fLineItemEdge) => {
+
+            const fLineItem = fLineItemEdge.node;
+
+            const lineItemId = fLineItem.lineItem.id;
+
+            const quantityFulfilled = parseFloat(fLineItem.quantity) || 0;
+
+
+
+            if (lineItemsMap[lineItemId]) {
+
+              lineItemsMap[lineItemId].fulfillmentLocations.push({
+
+                locationId: location.id,
+
+                locationName: location.name,
+
+                quantity: quantityFulfilled
+
+              });
+
+            }
+
+          });
+
+        }
+
       });
 
-      // Create discount line beneath inventory item
-      if (lineDiscount > 0) {
+    }
+
+
+
+    // Process fulfillment orders (unfulfilled or pending items)
+
+    if (order.fulfillmentOrders && order.fulfillmentOrders.edges.length > 0) {
+
+      order.fulfillmentOrders.edges.forEach((fulfillmentOrderEdge) => {
+
+        const fulfillmentOrder = fulfillmentOrderEdge.node;
+
+        const assignedLocation = fulfillmentOrder.assignedLocation.location;
+
+        if (!assignedLocation) return; // Skip if location is not available
+
+
+
+        if (fulfillmentOrder.lineItems && fulfillmentOrder.lineItems.edges.length > 0) {
+
+          fulfillmentOrder.lineItems.edges.forEach((fOrderLineItemEdge) => {
+
+            const fOrderLineItem = fOrderLineItemEdge.node;
+
+            const lineItemId = fOrderLineItem.lineItem.id;
+
+            const quantity = parseFloat(fOrderLineItem.lineItem.quantity) || 0;
+
+
+
+            if (lineItemsMap[lineItemId]) {
+
+              lineItemsMap[lineItemId].fulfillmentLocations.push({
+
+                locationId: assignedLocation.id,
+
+                locationName: assignedLocation.name,
+
+                quantity: quantity
+
+              });
+
+            }
+
+          });
+
+        }
+
+      });
+
+    }
+
+
+
+    return lineItemsMap;
+
+  }
+
+
+
+  // Map line items to fulfillment locations
+
+  var lineItemsMap = mapFulfillmentLocationsToLineItems(order);
+
+
+
+  // Process each line item
+
+  var newLineItems = [];
+
+
+
+  for (var lineItemId in lineItemsMap) {
+
+    var lineItemData = lineItemsMap[lineItemId];
+
+    var lineItem = lineItemData.lineItem;
+
+    var fulfillmentLocations = lineItemData.fulfillmentLocations;
+
+
+
+    // Calculate unit price
+
+    var unitPrice = parseFloat(lineItem.originalUnitPriceSet.shopMoney.amount) || 0;
+
+
+
+    // Parse line item quantity
+
+    var lineItemQuantity = parseFloat(lineItem.quantity) || 0;
+
+
+
+    // Aggregate line-level discounts
+
+    var lineDiscount = 0;
+
+    if (lineItem.discountAllocations && lineItem.discountAllocations.length > 0) {
+
+      lineItem.discountAllocations.forEach(function (discountAllocation) {
+
+        if (discountAllocation.allocatedAmount && discountAllocation.allocatedAmount.amount) {
+
+          lineDiscount += parseFloat(discountAllocation.allocatedAmount.amount) || 0;
+
+        }
+
+      });
+
+    }
+
+
+
+    // Allocate order-level discount proportionally
+
+    var subtotalPrice = parseFloat(order.subtotalPriceSet.shopMoney.amount) || 0;
+
+    var lineSubtotal = unitPrice * lineItemQuantity;
+
+    var proportionalDiscount = 0;
+
+    if (subtotalPrice > 0) {
+
+      proportionalDiscount = (lineSubtotal / subtotalPrice) * totalOrderDiscount;
+
+      lineDiscount += proportionalDiscount;
+
+    }
+
+
+
+    // Aggregate taxes and duties per line
+
+    var lineTaxesTotal = 0;
+
+    var lineTaxRate = 0;
+
+    if (lineItem.taxLines && lineItem.taxLines.length > 0) {
+
+      lineItem.taxLines.forEach(function (taxLine) {
+
+        lineTaxesTotal += parseFloat(taxLine.priceSet.shopMoney.amount) || 0;
+
+        lineTaxRate += parseFloat(taxLine.rate) || 0;
+
+      });
+
+    }
+
+
+
+    var lineDutiesTotal = 0;
+
+    if (lineItem.duties && lineItem.duties.length > 0) {
+
+      lineItem.duties.forEach(function (duty) {
+
+        lineDutiesTotal += parseFloat(duty.price.shopMoney.amount) || 0;
+
+      });
+
+    }
+
+
+
+    // Total taxes for the line item
+
+    var totalLineTaxes = lineTaxesTotal + lineDutiesTotal;
+
+
+
+    // For each fulfillment location, create a line item entry
+
+    if (fulfillmentLocations.length > 0) {
+
+      fulfillmentLocations.forEach(function (fulfillmentLocation) {
+
+        var quantity = parseFloat(fulfillmentLocation.quantity) || 0;
+
+        var locationId = fulfillmentLocation.locationId;
+
+        var locationName = fulfillmentLocation.locationName;
+
+
+
+        var lineSubtotal = unitPrice * quantity;
+
+
+
+        // Avoid division by zero
+
+        var quantityRatio = (lineItemQuantity > 0) ? quantity / lineItemQuantity : 0;
+
+
+
+        // Adjust discounts and taxes proportionally
+
+        var lineDiscountProportional = lineDiscount * quantityRatio;
+
+        var lineTaxesProportional = totalLineTaxes * quantityRatio;
+
+        var lineDutiesProportional = lineDutiesTotal * quantityRatio;
+
+
+
+        // Update totals
+
+        totalLineAmount += lineSubtotal;
+
+        totalDiscounts += lineDiscountProportional;
+
+        totalTaxes += lineTaxesProportional;
+
+
+
+        // Calculate tax rate
+
+        var taxBaseAmount = lineSubtotal - lineDiscountProportional;
+
+        var taxRate = (taxBaseAmount > 0) ? (lineTaxesProportional / taxBaseAmount) * 100 : 0;
+
+
+
+        // Create inventory line item
+
         newLineItems.push({
-          type: 'discount_item',
-          sku: 'Shopify Item Discount',
-          description: 'Discount for ' + lineItem.title,
-          rate: -lineDiscount,
-          amount: -lineDiscount,
-          quantity: 1,
-          taxRate: (
-          lineTaxes &&
-          lineSubtotal &&
-          lineDiscount !== undefined &&
-          (lineSubtotal - lineDiscount) > 0
-        )
-          ? ((lineTaxes / (lineSubtotal - lineDiscount)) * 100).toFixed(3) : "0.000"
-          // taxRate: ((lineTaxes / (lineSubtotal - lineDiscount)) * 100).toFixed(3)
-          //taxRate: Number((lineTaxRate * 100).toFixed(3))
+
+          type: 'inventory_item',
+
+          sku: lineItem.sku,
+
+          description: lineItem.title,
+
+          quantity: quantity,
+
+          rate: unitPrice,
+
+          amount: lineSubtotal,
+
+          locationId: locationId.replace('gid://shopify/Location/', ''),
+
+          locationName: locationName,
+
+          taxes: lineTaxesProportional,
+
+          duties: lineDutiesProportional,
+
+          taxRate: taxRate.toFixed(3)
+
         });
+
+
+
+        // Create discount line beneath inventory item if applicable
+
+        if (lineDiscountProportional > 0) {
+
+          newLineItems.push({
+
+            type: 'discount_item',
+
+            sku: 'Shopify Item Discount',
+
+            description: 'Discount for ' + lineItem.title,
+
+            rate: -lineDiscountProportional,
+
+            amount: -lineDiscountProportional,
+
+            quantity: 1,
+
+            locationId: locationId.replace('gid://shopify/Location/', ''),
+
+            locationName: locationName,
+
+            taxRate: taxRate.toFixed(3)
+
+          });
+
+        }
+
+      });
+
+    } else {
+
+      // If no fulfillment locations, handle as unfulfilled or default location
+
+      var quantity = lineItemQuantity;
+
+      var lineSubtotal = unitPrice * quantity;
+
+
+
+      // Update totals
+
+      totalLineAmount += lineSubtotal;
+
+      totalDiscounts += lineDiscount;
+
+      totalTaxes += totalLineTaxes;
+
+
+
+      // Calculate tax rate
+
+      var taxBaseAmount = lineSubtotal - lineDiscount;
+
+      var taxRate = (taxBaseAmount > 0) ? (totalLineTaxes / taxBaseAmount) * 100 : 0;
+
+
+
+      // Create inventory line item
+
+      newLineItems.push({
+
+        type: 'inventory_item',
+
+        sku: lineItem.sku,
+
+        description: lineItem.title,
+
+        quantity: quantity,
+
+        rate: unitPrice,
+
+        amount: lineSubtotal,
+
+        locationId: orderSourceLocation,
+
+        locationName: '', // You can set a default name if needed
+
+        taxes: totalLineTaxes,
+
+        duties: lineDutiesTotal,
+
+        taxRate: taxRate.toFixed(3)
+
+      });
+
+
+
+      // Create discount line beneath inventory item if applicable
+
+      if (lineDiscount > 0) {
+
+        newLineItems.push({
+
+          type: 'discount_item',
+
+          sku: 'Shopify Item Discount',
+
+          description: 'Discount for ' + lineItem.title,
+
+          rate: -lineDiscount,
+
+          amount: -lineDiscount,
+
+          quantity: 1,
+
+          locationId: orderSourceLocation,
+
+          locationName: '',
+
+          taxRate: taxRate.toFixed(3)
+
+        });
+
       }
-    });
+
+    }
+
   }
 
   // Handle shipping charges, discounts, and taxes
@@ -131,7 +518,7 @@ function transformShopifyOrderData(options) {
       var shippingLine = shippingLineEdge.node;
 
       var shippingAmount = parseFloat(shippingLine.originalPriceSet.shopMoney.amount);
-      
+
       // Aggregate shipping taxes
       var shippingTaxes = 0;
       var shippingTaxRate = 0;
@@ -141,30 +528,28 @@ function transformShopifyOrderData(options) {
           shippingTaxRate += parseFloat(taxLine.rate);
         });
       }
-      
+
       if (shippingAmount > 0) {
         totalShippingAmount += shippingAmount;
         totalShippingTaxes += shippingTaxes;
 
-      newLineItems.push({
-        type: 'shipping_item',
-        sku: 'Shopify Shipping',
-        description: shippingLine.title,
-        rate: shippingAmount,
-        amount: shippingAmount,
-        quantity: 1,
-        taxes: shippingTaxes,
-        taxRate: (
-          shippingTaxes &&
-          shippingAmount &&
-          shippingAmount > 0 &&
-          shippingAmoung !== undefined
-        )
-          ? ((shippingTaxes / shippingAmount) * 100).toFixed(3) : "0.000"
-          
-        //taxRate: Number((shippingTaxRate * 100).toFixed(3)) // Convert from decimal to percentage and round
-      })
-      };
+        newLineItems.push({
+          type: 'shipping_item',
+          sku: 'Shopify Shipping',
+          description: shippingLine.title,
+          rate: shippingAmount,
+          amount: shippingAmount,
+          quantity: 1,
+          taxes: shippingTaxes,
+          taxRate: (
+            shippingTaxes &&
+            shippingAmount &&
+            shippingAmount > 0 &&
+            shippingAmount !== undefined
+          )
+            ? ((shippingTaxes / shippingAmount) * 100).toFixed(3) : "0.000"
+        });
+      }
 
       // Handle shipping discounts
       var shippingDiscount = 0;
@@ -224,7 +609,7 @@ function transformShopifyOrderData(options) {
           amount: parseFloat(attr.value),
           rate: parseFloat(attr.value),
           quantity: 1
-        })
+        });
         newLineItems.push({
           type: 'fee_item',
           sku: 'GlobalE Duties Subsidy Clearing',
@@ -232,7 +617,7 @@ function transformShopifyOrderData(options) {
           amount: -1 * parseFloat(attr.value),
           rate: -1 * parseFloat(attr.value),
           quantity: 1
-        })
+        });
       }
       if (attr.key === 'Global-e Additional Fees' && parseFloat(attr.value) !== 0) {
         newLineItems.push({
@@ -247,7 +632,6 @@ function transformShopifyOrderData(options) {
       }
     });
   }
-
 
   // Handle additional fees (i.e., GlobalE)
   if (order.originalTotalAdditionalFeesSet && parseFloat(order.originalTotalAdditionalFeesSet.shopMoney.amount) !== 0) {
@@ -314,14 +698,12 @@ function transformShopifyOrderData(options) {
   }
 
   order.orderUrl = orderUrl;
-  
   order.orderSourceLocation = orderSourceLocation;
 
   // Replace original line items with new ones
   order.line_items_to_import = newLineItems;
 
   // Assign the transformed order back to options.postResponseMapData
-  options.postResponseMapData[0].orderDetailsLookup = order
-  return options.postResponseMapData
+  options.postResponseMapData[0].orderDetailsLookup = order;
+  return options.postResponseMapData;
 }
-
