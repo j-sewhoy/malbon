@@ -1,0 +1,342 @@
+query (
+  $orderId: ID!
+  $metafieldsCursor: String
+  $customerMetafieldsCursor: String
+  $lineItemsCursor: String
+  $shippingLinesCursor: String
+) {
+  order(id: $orderId) {
+    id
+    name
+    legacyResourceId
+    sourceIdentifier
+    channelInformation {
+      app {
+        description
+        id
+        title
+      }
+      channelDefinition {
+        channelName
+        handle
+        id
+        subChannelName
+      }
+      channelId
+      id
+    }
+    retailLocation {
+      id
+      name
+    }
+    publication {
+      id
+      catalog {
+        id
+        title
+        status
+      }
+    }
+    totalPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    subtotalPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalDiscountsSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalShippingPriceSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    totalTaxSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    originalTotalAdditionalFeesSet {
+      shopMoney {
+        amount
+        currencyCode
+      }
+    }
+    displayFinancialStatus
+    displayFulfillmentStatus
+    processedAt
+    sourceName
+    tags
+    customAttributes {
+      key
+      value
+    }
+    shippingAddress {
+      firstName
+      lastName
+      address1
+      address2
+      city
+      provinceCode
+      countryCodeV2
+      zip
+    }
+    billingAddress {
+      firstName
+      lastName
+      address1
+      address2
+      city
+      provinceCode
+      countryCodeV2
+      zip
+    }
+    customer {
+      id
+      email
+      firstName
+      lastName
+      metafields(first: 250, after: $customerMetafieldsCursor) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        edges {
+          cursor
+          node {
+            namespace
+            key
+            value
+          }
+        }
+      }
+    }
+    metafields(first: 250, after: $metafieldsCursor) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        cursor
+        node {
+          namespace
+          key
+          value
+        }
+      }
+    }
+    transactions {
+      id
+      kind
+      status
+      gateway
+      amountSet {
+        presentmentMoney {
+          amount
+          currencyCode
+        }
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+      authorizationCode
+      createdAt
+      parentTransaction {
+        id
+      }
+      paymentId
+    }
+    discountApplications(first: 250) {
+      edges {
+        node {
+          allocationMethod
+          targetSelection
+          targetType
+          value {
+            __typename
+            ... on MoneyV2 {
+              amount
+            }
+            ... on PricingPercentageValue {
+              percentage
+            }
+          }
+        }
+      }
+    }
+    discountCode
+    discountCodes
+    taxLines {
+      title
+      rate
+      priceSet {
+        shopMoney {
+          amount
+          currencyCode
+        }
+      }
+    }
+    lineItems(first: 250, after: $lineItemsCursor) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        cursor
+        node {
+          id
+          title
+          quantity
+          sku
+          variant {
+            id
+            compareAtPrice
+            price
+          }
+          originalUnitPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          discountedUnitPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          discountAllocations {
+            allocatedAmount {
+              amount
+              currencyCode
+            }
+            discountApplication {
+              allocationMethod
+              targetSelection
+              targetType
+              value {
+                __typename
+                ... on MoneyV2 {
+                  amount
+                }
+                ... on PricingPercentageValue {
+                  percentage
+                }
+              }
+            }
+          }
+          taxLines {
+            title
+            rate
+            priceSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+          }
+          duties {
+            id
+            harmonizedSystemCode
+            price {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+          }
+        }
+      }
+    }
+    fulfillmentOrders(first: 250) {
+edges{
+      node {
+        id
+        status
+        assignedLocation {
+          location {
+            id
+            name
+          }
+        }
+        lineItems(first: 250) {
+          edges {
+            node {
+              lineItem {
+                id
+                quantity
+              }
+            }
+          }
+        }
+      }
+      }
+    }
+    shippingLines(first: 250, after: $shippingLinesCursor) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      edges {
+        cursor
+        node {
+          title
+          originalPriceSet {
+            shopMoney {
+              amount
+              currencyCode
+            }
+          }
+          taxLines {
+            title
+            rate
+            priceSet {
+              shopMoney {
+                amount
+                currencyCode
+              }
+            }
+          }
+          discountAllocations {
+            allocatedAmount {
+              amount
+              currencyCode
+            }
+            discountApplication {
+              allocationMethod
+              targetSelection
+              targetType
+              value {
+                __typename
+                ... on MoneyV2 {
+                  amount
+                }
+                ... on PricingPercentageValue {
+                  percentage
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+
+VARIABLES:
+{"orderId":"{{record.node.id}}","metafieldsCursor":null,"customerMetafieldsCursor":null,"lineItemsCursor":null}
