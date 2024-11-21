@@ -1,0 +1,79 @@
+/**
+ * @NApiVersion 2.x
+ * @NScriptType UserEventScript
+ */
+define(['N/record', 'N/log'], function(record, log) {
+
+    function beforeSubmit(context) {
+        if (context.type !== context.UserEventType.CREATE) return;
+
+        var recordType = context.newRecord.type;
+
+        // Apply specific logic based on record type
+        if (recordType === record.Type.INVOICE) {
+            syncTaxRates(context.newRecord);
+        }
+
+        // Add additional logic for other record types here if needed
+    }
+
+    /**
+     * Syncs tax rates from the Sales Order to the Invoice.
+     *
+     * @param {Object} invoice - The Invoice record object being processed.
+     */
+    function syncTaxRates(invoice) {
+        var salesOrderId = invoice.getValue('createdfrom');
+
+        if (!salesOrderId) {
+            log.debug('No Sales Order found for this Invoice', 'Skipping tax rate sync');
+            return;
+        }
+
+        try {
+            // Load the Sales Order
+            var salesOrder = record.load({
+                type: record.Type.SALES_ORDER,
+                id: salesOrderId
+            });
+
+            var invoiceLineCount = invoice.getLineCount({ sublistId: 'item' });
+
+            // Iterate through Invoice lines
+            for (var i = 0; i < invoiceLineCount; i++) {
+                var soLineId = invoice.getSublistValue({
+                    sublistId: 'item',
+                    fieldId: 'orderline', // Field referencing the Sales Order line
+                    line: i
+                });
+
+                if (soLineId !== null) {
+                    var soTaxRate = salesOrder.getSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'taxrate1',
+                        line: soLineId - 1 // Adjust for 0-based indexing in SuiteScript
+                    });
+
+                    // Set the tax rate on the Invoice line
+                    invoice.setSublistValue({
+                        sublistId: 'item',
+                        fieldId: 'taxrate1',
+                        line: i,
+                        value: soTaxRate
+                    });
+                }
+            }
+
+            log.debug('Tax rates synced successfully for Invoice', invoice.id);
+        } catch (e) {
+            log.error({
+                title: 'Error syncing tax rates',
+                details: e.message
+            });
+        }
+    }
+
+    return {
+        beforeSubmit: beforeSubmit
+    };
+});
