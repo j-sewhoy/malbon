@@ -309,6 +309,21 @@ function transformShopifyOrderData(options) {
     var totalLineTaxes = lineTaxesTotal + lineDutiesTotal;
 
 
+    // **SKU Modification Logic**
+
+    // If lineItem.sku starts with "Extend-Shipping-Protection-", set it to "Extend-Shipping-Protection"
+
+    // If lineItem.sku starts with "MB-G-CARD-", set it to "MB-G-CARD"
+
+    if (lineItem.sku && typeof lineItem.sku === 'string') {
+    var skuLower = lineItem.sku.toLowerCase();
+  
+    if (skuLower.startsWith("extend-shipping-protection-")) {
+      lineItem.sku = "Extend-Shipping-Protection";
+    } else if (skuLower.startsWith("mb-g-card-")) {
+      lineItem.sku = "MB-G-CARD";
+    }
+  }
 
     // For each fulfillment location, create a line item entry
 
