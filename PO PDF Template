@@ -1,0 +1,258 @@
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+<head>
+	<link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}" src-bold="${nsfont.NotoSans_Bold}" src-italic="${nsfont.NotoSans_Italic}" src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
+	<#if .locale == "zh_CN">
+		<link name="NotoSansCJKsc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKsc_Regular}" src-bold="${nsfont.NotoSansCJKsc_Bold}" bytes="2" />
+	<#elseif .locale == "zh_TW">
+		<link name="NotoSansCJKtc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKtc_Regular}" src-bold="${nsfont.NotoSansCJKtc_Bold}" bytes="2" />
+	<#elseif .locale == "ja_JP">
+		<link name="NotoSansCJKjp" type="font" subtype="opentype" src="${nsfont.NotoSansCJKjp_Regular}" src-bold="${nsfont.NotoSansCJKjp_Bold}" bytes="2" />
+	<#elseif .locale == "ko_KR">
+		<link name="NotoSansCJKkr" type="font" subtype="opentype" src="${nsfont.NotoSansCJKkr_Regular}" src-bold="${nsfont.NotoSansCJKkr_Bold}" bytes="2" />
+	<#elseif .locale == "th_TH">
+		<link name="NotoSansThai" type="font" subtype="opentype" src="${nsfont.NotoSansThai_Regular}" src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
+	</#if>
+    <macrolist>
+        <macro id="nlheader">
+                      <table class="header" style="width: 100%;">
+                <tr>
+                    <td rowspan="2">
+                    <#if companyInformation.logoUrl?length != 0>
+                        <@filecabinet nstype="image" style="float: left; margin: 3px" src="${companyInformation.logoUrl}" />
+                    </#if>
+                    </td>
+                    <td></td>      
+                    <td align="right"><span class="title">${record@title}</span></td>
+                </tr>
+                <tr>
+                   <td align="right"><span><b>Doument# </b></span></td>
+                    <td align="right"><span class="number">${record.tranid}</span></td>
+                </tr>
+                <tr>
+                   <td allign="right">
+                        <span class="nameandaddress">${companyInformation.companyName}</span><br />
+                        <span class="nameandaddress">${companyInformation.addressText}</span>
+                    </td>
+                    <td align="right">
+                      <span align="right"> <b>${record.trandate@label}:</b></span><br />
+                      <span align="right"><b>Pages:</b></span>
+                    </td>
+                    <td align="left">
+                       <span>${record.trandate}</span><br />
+                      <span>Page <pagenumber/> of <totalpages/></span>
+                    </td>
+                </tr>
+            </table>
+        </macro>
+        <macro id="nlfooter">
+            <table class="footer" style="width: 100%;">
+                <tr>
+                    <td>
+                        <barcode codetype="code128" showtext="true" value="${record.tranid}"/>
+                    </td>
+                    <td align="right">
+                        <pagenumber/> of <totalpages/>
+                    </td>
+                </tr>
+            </table>
+        </macro>
+    </macrolist>
+    <style>
+		* {
+		<#if .locale == "zh_CN">
+			font-family: NotoSans, NotoSansCJKsc, sans-serif;
+		<#elseif .locale == "zh_TW">
+			font-family: NotoSans, NotoSansCJKtc, sans-serif;
+		<#elseif .locale == "ja_JP">
+			font-family: NotoSans, NotoSansCJKjp, sans-serif;
+		<#elseif .locale == "ko_KR">
+			font-family: NotoSans, NotoSansCJKkr, sans-serif;
+		<#elseif .locale == "th_TH">
+			font-family: NotoSans, NotoSansThai, sans-serif;
+		<#else>
+			font-family: NotoSans, sans-serif;
+		</#if>
+		}
+		table {
+			font-size: 9pt;
+			table-layout: fixed;
+		}
+        th {
+            font-weight: bold;
+            font-size: 8pt;
+            vertical-align: middle;
+            padding: 5px 6px 3px;
+            background-color: #e3e3e3;
+            color: #333333;
+        }
+        td {
+            padding: 4px 6px;
+        }
+		td p { align:left }
+        b {
+            font-weight: bold;
+            color: #333333;
+        }
+        table.header td {
+            padding: 0;
+            font-size: 10pt;
+        }
+        table.footer td {
+            padding: 0;
+            font-size: 8pt;
+        }
+        table.itemtable th {
+            padding-bottom: 10px;
+            padding-top: 10px;
+        }
+        table.body td {
+            padding-top: 2px;
+        }
+        table.total {
+            page-break-inside: avoid;
+        }
+        tr.totalrow {
+            background-color: #e3e3e3;
+            line-height: 200%;
+        }
+        td.totalboxtop {
+            font-size: 12pt;
+            background-color: #e3e3e3;
+        }
+        td.addressheader {
+            font-size: 8pt;
+            padding-top: 6px;
+            padding-bottom: 2px;
+        }
+        td.address {
+            padding-top: 0;
+        }
+        td.totalboxmid {
+            font-size: 28pt;
+            padding-top: 20px;
+            background-color: #e3e3e3;
+        }
+        td.totalboxbot {
+            background-color: #e3e3e3;
+            font-weight: bold;
+        }
+        span.title {
+            font-size: 28pt;
+        }
+        span.number {
+            font-size: 16pt;
+        }
+        span.itemname {
+            font-weight: bold;
+            line-height: 150%;
+        }
+        hr {
+            width: 100%;
+            color: #d3d3d3;
+            background-color: #d3d3d3;
+            height: 1px;
+        }
+    </style>
+</head>
+<body header="nlheader" header-height="15%" footer="nlfooter" footer-height="20pt" padding="0.8in" size="Letter">
+    <table class="addresstable" style="width: 100%;"><tr>
+	<td class="addressheader" colspan="5"><b>${record.billaddress@label?upper_case}</b></td>
+	<td class="addressheader" colspan="5"><b>${record.shipaddress@label?upper_case}</b></td>
+    <td align="right" colspan="3"><span class="label" align="right"><b>${record.salesrep@label}</b></span></td>
+    <td align="left" colspan="3">${record.salesrep}</td>
+      
+	</tr>
+	<tr style="border: 0px currentColor; border-image: none;">
+	<td class="addressheader" colspan="5">
+	<hr style="padding-top: 0px; padding-bottom: 0px; margin-top: 0px; margin-bottom: 0px; vertical-align: middle;" /></td>
+	<td class="addressheader" colspan="5">
+	<hr style="padding-top: 0px; padding-bottom: 0px; margin-top: 0px; margin-bottom: 0px; vertical-align: middle;" /></td>
+	<td class="label" align="right" colspan="3"><span class="label" align="right"></span></td>
+	<td class="value" align="left" colspan="3"></td>
+	
+    </tr>
+	<tr>
+	<td class="address" colspan="5">${record.billaddress}</td>
+	<td class="address" colspan="5">${record.shipaddress}</td>
+     <td class="label" align="right" colspan="3"><span class="label" align="right"><b> ${record.custbody_mg_inhousedate@label}: 
+       <br/>${record.custbody_mg_exfactorydate@label}: 
+       <br/>${record.custbody_mg_reviseddate@label}: </b></span></td>
+	 <td class="value" align="left" colspan="3">${record.custbody_mg_inhousedate}
+       <br/>${record.custbody_mg_exfactorydate}
+       <br/>${record.custbody_mg_reviseddate}</td>
+	</tr></table>
+&nbsp;
+<!--
+<table class="body" style="width: 100%;"><tr>
+	<th style="width: 20%;">Issued:</th>
+	<th style="width: 15%;">${record.custbody_mg_inhousedate@label?upper_case}</th>
+	<th style="width: 20%;">${record.custbody_mg_exfactorydate@label?upper_case}</th>
+	<th style="width: 30%;">${record.custbody_mg_reviseddate@label?upper_case}</th>
+	</tr>
+	<tr>
+	<td style="width: 20%;">${record.trandate}</td>
+	<td style="width: 15%;">${record.custbody_mg_inhousedate}</td>
+	<td style="width: 20%;">${record.custbody_mg_exfactorydate}</td>
+	<td style="width: 30%;">${record.custbody_mg_reviseddate}</td>
+	</tr></table>
+  -->
+    <#if record.item?has_content>
+    <table class="itemtable" style="width: 100%;">
+        <!-- start items -->
+        <#list record.item as item>
+            <#if item_index==0>
+                <thead>
+                <tr>
+                    <th colspan="3" align="center">${item.quantity@label}</th>
+                    <th colspan="12">${item.item@label}</th>
+                   <th colspan="3">SIZE</th> 
+                    <th colspan="4" align="right">${item.rate@label}</th>
+                    <th colspan="4" align="right">${item.amount@label}</th>
+                </tr>
+                </thead>
+            </#if>
+            <tr>
+                <td colspan="3" line-height="150%" align="center">${item.quantity}</td>
+                <td colspan="12"><span class="itemname">${item.item}</span><br />${item.displayname}</td>
+                  <td colspan="3">${item.custcol_mg_size}</td>
+                <td colspan="4" align="right">${item.rate}</td>
+                <td colspan="4" align="right">${item.amount}</td>
+            </tr>
+        </#list>
+        <!-- end items -->
+    </table>
+    </#if>
+    <#if record.expense?has_content>
+    <table class="itemtable" style="width: 100%;">
+        <!-- start expenses -->
+        <#list record.expense as expense >
+            <#if expense_index==0>
+                <thead>
+                <tr>
+                    <th colspan="12">${expense.category@label}</th>
+                    <th colspan="10">${expense.account@label}</th>
+                    <th align="right" colspan="4">${expense.amount@label}</th>
+                </tr>
+                </thead>
+            </#if>
+            <tr>
+                <td colspan="12">${expense.category}</td>
+                <td colspan="10"><span class="itemname">${expense.account}</span></td>
+                <td align="right" colspan="4">${expense.amount}</td>
+            </tr>
+        </#list>
+        <!-- end expenses -->
+    </table>
+    </#if>
+    <hr />
+    <table class="total" style="width: 100%;">
+        <tr class="totalrow">
+            <td background-color="#ffffff" colspan="4"></td>
+            <td align="right"><b>${record.total@label}</b></td>
+            <td align="right">${record.total}</td>
+        </tr>
+    </table>
+</body>
+</pdf>
