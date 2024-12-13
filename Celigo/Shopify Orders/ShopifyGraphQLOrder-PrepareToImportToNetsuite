@@ -7,11 +7,11 @@ function transformShopifyOrderData(options) {
   const webBrand = 'Malbon Web';
 
 
-
   // Extract the order data from options.postResponseMapData[0].orderDetailsLookup
 
   var order = options.postResponseMapData[0].orderDetailsLookup;
 
+  var shippingAddressProvince = order.shippingAddress.provinceCode || '';
 
 
   var orderUrl = storeUrl.concat(order.legacyResourceId);
@@ -315,15 +315,15 @@ function transformShopifyOrderData(options) {
 
     // If lineItem.sku starts with "MB-G-CARD-", set it to "MB-G-CARD"
 
-    if (lineItem.sku && typeof lineItem.sku === 'string') {
-    var skuLower = lineItem.sku.toLowerCase();
-  
-    if (skuLower.startsWith("extend-shipping-protection-")) {
-      lineItem.sku = "Extend-Shipping-Protection";
-    } else if (skuLower.startsWith("mb-g-card-")) {
-      lineItem.sku = "MB-G-CARD";
-    }
+if (lineItem.sku && typeof lineItem.sku === 'string') {
+  var skuLower = lineItem.sku.toLowerCase();
+
+  if (skuLower.startsWith("extend-shipping-protection-")) {
+    lineItem.sku = "Extend-Shipping-Protection";
+  } else if (skuLower.startsWith("mb-g-card-")) {
+    lineItem.sku = "MB-G-CARD";
   }
+}
 
     // For each fulfillment location, create a line item entry
 
@@ -601,7 +601,7 @@ function transformShopifyOrderData(options) {
   // Handle special regional taxes (e.g., Colorado retail tax)
   if (order.taxLines && order.taxLines.length > 0) {
     order.taxLines.forEach(function (taxLine) {
-      if (taxLine.title === 'Colorado Retail Delivery Fee') {
+      if (taxLine.title === 'Colorado Retail Delivery Fee' || (taxLine.title === 'Road Improvement and Food Delivery Fee' && shippingAddressProvince==='MN')) {
         newLineItems.push({
           type: 'fee_item',
           sku: 'Shopify Special Regional Tax',
