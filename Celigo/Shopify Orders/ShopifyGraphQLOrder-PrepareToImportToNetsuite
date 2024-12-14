@@ -4,7 +4,12 @@ function transformShopifyOrderData(options) {
     const webBrand = 'Malbon Web';
     // Extract the order data from options.postResponseMapData[0].orderDetailsLookup
     var order = options.postResponseMapData[0].orderDetailsLookup;
-    var shippingAddressProvince = order.shippingAddress.provinceCode || '';
+    var shippingAddressProvince='';
+    if(order.shippingAddress) {
+      if(order.shippingAddress.provinceCode) {
+          shippingAddressProvince = order.shippingAddress.provinceCode || '';
+      }
+    }
     var orderUrl = storeUrl.concat(order.legacyResourceId);
     var orderSourceLocation = (order.retailLocation && order.retailLocation.id) ? order.retailLocation.id.replace('gid://shopify/Location/', '') : webBrand;
     // Initialize variables for totals
