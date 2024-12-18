@@ -40,7 +40,7 @@ define(['N/record', 'N/log'], function(record, log) {
                         id: categoryId
                     });
 
-                    var reclassAccountIdRaw = categoryRecord.getValue('custrecord_mg_tax_reclass_account') || 392;
+                    var reclassAccountIdRaw = categoryRecord.getValue('custrecord_mg_tax_reclass_account');
                     var reclassAccountId = Number(reclassAccountIdRaw);
 
                     var categoryName = categoryRecord.getValue('name'); // for memo
