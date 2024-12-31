@@ -185,6 +185,8 @@
         span.title {
             font-size: 22pt;
           line-height:100%;
+          padding:0px;
+          margin:0px;
         }
         span.number {
             font-size: 16pt;
@@ -201,7 +203,7 @@
         }
     </style>
 </head>
-<body header="nlheader" header-height="12%" footer="nlfooter" footer-height="20pt" padding="0.75in" size="Letter">
+<body header="nlheader" header-height="13%" footer="nlfooter" footer-height="20pt" padding="0.75in" size="Letter">
     <table class="addresstable" style="width: 100%; padding-top: 5px; padding-bottom: 5px;"><tr style="line-height:120%">
 	<td class="addressheader" width="30%"><b>${record.billaddress@label?upper_case}</b></td>
     <td class="addressheader" width="30%"></td>  
@@ -220,7 +222,7 @@
     <!-- Create a composite key for each unique group -->
     <#list record.item as item>
         <#assign cleanRate = (item.rate?string("0.00"))?replace(",", "")?replace("$", "") />
-        <#assign compositeKey = item.custcol_mg_parentstyle + "|" + item.location + "|" + cleanRate />
+        <#assign compositeKey = item.custcol_mg_parentstyle + "|" + item.location + "|" + cleanRate + "|" + item.custcol_mg_color />
         <#if !(uniqueGroups?seq_contains(compositeKey))>
             <#assign uniqueGroups = uniqueGroups + [compositeKey] />
         </#if>
@@ -232,8 +234,9 @@
         <#assign parentStyle = groupParts[0] />
         <#assign lineLocation = groupParts[1] />
         <#assign rateString = groupParts[2] />
+        <#assign colorGroup = groupParts[3] />
         <#assign rate = rateString?replace(",", "")?replace("$", "")?number!("0") />
-        <#assign items = record.item?filter(it -> (it.custcol_mg_parentstyle + "|" + it.location + "|" + (it.rate?string("0.00")?replace(",", "")?replace("$", ""))) == groupKey) />
+        <#assign items = record.item?filter(it -> (it.custcol_mg_parentstyle + "|" + it.location + "|" + (it.rate?string("0.00")?replace(",", "")?replace("$", "")) + "|" + it.custcol_mg_color) == groupKey) />
 
         <#assign uniqueSizes = [] />
         <!-- Collect unique sizes for this group -->
@@ -273,7 +276,7 @@
                 <tbody>
                     <tr>
                         <!-- Style Number -->
-                        <td style="text-align: left;">${parentStyle}</td>
+                        <td style="text-align: left;">${parentStyle}<#if colorGroup != ""><br />(${colorGroup})</#if></td>
 
                         <!-- Quantities for Sizes -->
                         <#list sizeChunk as sizeObj>
