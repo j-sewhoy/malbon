@@ -200,7 +200,6 @@
             "itemtype": itemType,
             "internalid": itemInternalId,
             "custcol_mg_parentstyle": line.custcol_mg_parentstyle,
-            "location": line.location,
             "color": line.custcol_mg_color,
             "size": line.custcol_mg_size,
             "sizesort": line.custcol_mg_sizesort!9999,
@@ -291,7 +290,6 @@
         <#list group as gLine>
             <#assign cleanRate = (gLine.rate?string("0.00"))?replace(",", "")?replace("$", "") />
             <#assign compositeKey = gLine.custcol_mg_parentstyle + "|"
-                + gLine.location + "|"
                 + cleanRate + "|"
                 + gLine.color + "|"
                 + gLine.discountRate
@@ -305,10 +303,9 @@
         <#list uniqueGroups as groupKey>
             <#assign groupParts = groupKey?split("|") />
             <#assign parentStyle        = groupParts[0] />
-            <#assign lineLocation       = groupParts[1] />
-            <#assign rateString         = groupParts[2] />
-            <#assign colorGroup         = groupParts[3] />
-            <#assign discountRateString = groupParts[4] />
+            <#assign rateString         = groupParts[1] />
+            <#assign colorGroup         = groupParts[2] />
+            <#assign discountRateString = groupParts[3] />
 
             <#assign rateNum           = rateString?number!("0.00") />
             <#assign discountRateNum   = discountRateString?number!("0.00") />
@@ -316,7 +313,6 @@
             <#assign items = group?filter(it ->
                 (
                     it.custcol_mg_parentstyle + "|"
-                    + it.location + "|"
                     + (it.rate?string("0.00")?replace(",", "")?replace("$", ""))
                     + "|"
                     + it.color + "|"
@@ -346,10 +342,6 @@
             <#assign paddedSizes  = sortedSizes + padding />
             <#assign chunkedSizes = paddedSizes?chunk(10) />
 
-            <!-- Display location info -->
-           <!-- <p style="text-align: right; font-size: 5pt; margin-bottom: 1px;">
-                <strong>Location:</strong> ${lineLocation}
-            </p>-->
 
             <!-- Render each chunk of sizes -->
             <#list chunkedSizes as sizeChunk>
