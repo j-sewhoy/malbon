@@ -16,16 +16,16 @@
 	</#if>
 <macrolist>
     <macro id="nlheader">
-        <table class="header" style="width: 100%; font-size: 9pt;">
+        <table class="header" style="width: 100%; font-size: 8pt; vertical-align: top;">
             <!-- First Line: Logo and Title -->
             <tr>
-                <td style="width: 30%;">
+                <td style="width: 30%">
                     <#if companyInformation.logoUrl?length != 0>
-                        <@filecabinet nstype="image" style="float: left; margin: 3px;" src="${companyInformation.logoUrl}" />
+                        <@filecabinet nstype="image" style="float: left; height: 22px; width: 99px; vertical-align:top;" src="${companyInformation.logoUrl}" />
                     </#if>
                 </td>
-                <td></td>
-                <td align="left">
+                <td style="width: 30%"></td>
+                <td style="width: 40%; align=left;text-align: center;">
                     <span class="title">${record@title}</span>
                 </td>
             </tr>
@@ -34,7 +34,7 @@
                 <td style="width: 30%;">
                     <span class="nameandaddress">${companyInformation.companyName}</span>
                 </td>
-                <td></td>
+                <td style="width: 30%"></td>
                 <td style="text-align: left;">
                     <span><b>PO#:</b> ${record.tranid}</span>
                 </td>
@@ -42,43 +42,62 @@
             <!-- Third Line: First Address Line and PO Date -->
             <tr>
                 <td style="width: 30%;">
-                    <#if companyInformation.addressText?contains("\n")>
-                        <span class="nameandaddress">${companyInformation.addressText?split("\n")[0]}</span>
-                    <#else>
-                        <span class="nameandaddress">${companyInformation.addressText}</span>
-                    </#if>
+                        <span class="nameandaddress">${companyInformation.address1}</span>
                 </td>
-                <td></td>
+                <td style="width: 30%"></td>
                 <td style="text-align: left;">
-                    <span><b>Date:</b> ${record.trandate}</span>
+                    <span><b>PO Date:</b> ${record.trandate}</span>
                 </td>
             </tr>
             <!-- Fourth Line: Second Address Line and Page Count -->
             <tr>
                 <td style="width: 30%;">
-                    <#if companyInformation.addressText?contains("\n")>
-                        <#if companyInformation.addressText?split("\n")?size > 1>
-                            <span class="nameandaddress">${companyInformation.addressText?split("\n")[1]}</span>
-                        </#if>
-                    </#if>
+                   <span class="nameandaddress">${companyInformation.city}, ${companyInformation.state} ${companyInformation.zip}</span>
                 </td>
-                <td></td>
+                <td style="width: 30%"></td>
                 <td style="text-align: left;">
-                    <span><b>Pages:</b> <pagenumber/> of <totalpages/></span>
+                    <span><b>Ex-Factory Date:</b> ${record.custbody_mg_exfactorydate}
+                      <#if record.custbody_mg_exfactorydate_original?? && record.custbody_mg_exfactorydate_original?string != '' && (record.custbody_mg_exfactorydate_original?string != record.custbody_mg_exfactorydate?string)> (Original: ${record.custbody_mg_exfactorydate_original})</#if></span>
                 </td>
             </tr>
+
             <!-- Additional Address Lines -->
-            <#if companyInformation.addressText?contains("\n")>
-                <#list companyInformation.addressText?split("\n") as line>
-                    <#if line_index > 1>
+
                         <tr>
-                            <td colspan="3" style="width: 100%;">
-                                <span class="nameandaddress">${line}</span>
+                            <td style="width: 30%;">
+                                <span class="nameandaddress">United States of America</span>
                             </td>
+                          <td style="width: 30%"></td>
+                            <td style="text-align: left;">
+                    <span><b>In-House Date:</b> ${record.custbody_mg_inhousedate}
+                    <#if record.custbody_mg_inhousedate_original?? && record.custbody_mg_inhousedate_original?string != '' && (record.custbody_mg_inhousedate_original?string != record.custbody_mg_inhousedate?string)> (Original: ${record.custbody_mg_inhousedate_original})</#if></span>
+                </td>
                         </tr>
-                    </#if>
-                </#list>
-            </#if>
+
+                                              <tr>
+                            <td style="width: 30%;">
+                            </td>
+                            <td style="width: 30%"></td>
+                            <td style="text-align: left;">
+                    <span><b>Incoterm:</b> ${record.incoterm}</span>
+                </td>
+                        </tr>
+                                                                  <tr>
+                            <td style="width: 30%;">
+                            </td>
+                            <td style="width: 30%"></td>
+                            <td style="text-align: left;">
+                    <span><b>Payment Terms:</b> ${record.terms}</span>
+                </td>
+                        </tr>
+                                                                    <tr>
+                            <td style="width: 30%;">
+                            </td>
+                            <td style="width: 30%"></td>
+                            <td style="text-align: left;">
+                    <span><b>Page:</b> <pagenumber/> of <totalpages/></span>
+                </td>
+                        </tr>
         </table>
     </macro>
 </macrolist>
@@ -99,19 +118,19 @@
 		</#if>
 		}
 		table {
-			font-size: 9pt;
+			font-size: 8pt;
 			table-layout: fixed;
 		}
         th {
             font-weight: bold;
             font-size: 8pt;
             vertical-align: middle;
-            padding: 5px 6px 3px;
+            padding: 5px 6px 3px 0px;
             background-color: #e3e3e3;
             color: #333333;
         }
         td {
-            padding: 4px 6px;
+            padding: 4px 0px;
         }
 		td p { align:left }
         b {
@@ -119,19 +138,21 @@
             color: #333333;
         }
         table.header td {
-            padding: 0;
-            font-size: 10pt;
+
+            font-size: 8pt;
+           line-height: 1.2;
         }
         table.footer td {
             padding: 0;
             font-size: 8pt;
         }
         table.itemtable th {
-            padding-bottom: 10px;
-            padding-top: 10px;
+            padding-bottom: 3px;
+            padding-top: 3px;
         }
         table.body td {
-            padding-top: 2px;
+            padding-top: 3px;
+          padding-bottom: 3px;
         }
         table.total {
             page-break-inside: avoid;
@@ -141,13 +162,13 @@
             line-height: 200%;
         }
         td.totalboxtop {
-            font-size: 12pt;
+            font-size: 10pt;
             background-color: #e3e3e3;
         }
         td.addressheader {
             font-size: 8pt;
-            padding-top: 6px;
-            padding-bottom: 2px;
+            padding-top: 0px;
+            padding-bottom: 0px;
         }
         td.address {
             padding-top: 0;
@@ -163,6 +184,7 @@
         }
         span.title {
             font-size: 22pt;
+          line-height:100%;
         }
         span.number {
             font-size: 16pt;
@@ -179,50 +201,22 @@
         }
     </style>
 </head>
-<body header="nlheader" header-height="15%" footer="nlfooter" footer-height="20pt" padding="0.8in" size="Letter">
-    <table class="addresstable" style="width: 100%;"><tr>
-	<td class="addressheader" colspan="5"><b>${record.billaddress@label?upper_case}</b></td>
-	<td class="addressheader" colspan="5"><b>${record.shipaddress@label?upper_case}</b></td>
-    <td align="right" colspan="3"><span class="label" align="right"><b>${record.salesrep@label}</b></span></td>
-    <td align="left" colspan="3">${record.salesrep}</td>
-      
+<body header="nlheader" header-height="12%" footer="nlfooter" footer-height="20pt" padding="0.75in" size="Letter">
+    <table class="addresstable" style="width: 100%; padding-top: 5px; padding-bottom: 5px;"><tr style="line-height:120%">
+	<td class="addressheader" width="30%"><b>${record.billaddress@label?upper_case}</b></td>
+    <td class="addressheader" width="30%"></td>  
+	<td class="addressheader" width="40%"><b>${record.shipaddress@label?upper_case}</b></td>   
 	</tr>
-	<tr style="border: 0px currentColor; border-image: none;">
-	<td class="addressheader" colspan="5">
-	<hr style="padding-top: 0px; padding-bottom: 0px; margin-top: 0px; margin-bottom: 0px; vertical-align: middle;" /></td>
-	<td class="addressheader" colspan="5">
-	<hr style="padding-top: 0px; padding-bottom: 0px; margin-top: 0px; margin-bottom: 0px; vertical-align: middle;" /></td>
-	<td class="label" align="right" colspan="3"><span class="label" align="right"></span></td>
-	<td class="value" align="left" colspan="3"></td>
-	
-    </tr>
-	<tr>
-	<td class="address" colspan="5">${record.billaddress}</td>
-	<td class="address" colspan="5">${record.shipaddress}</td>
-     <td class="label" align="right" colspan="3"><span class="label" align="right"><b> ${record.custbody_mg_inhousedate@label}: 
-       <br/>${record.custbody_mg_exfactorydate@label}: 
-       <br/>${record.custbody_mg_reviseddate@label}: </b></span></td>
-	 <td class="value" align="left" colspan="3">${record.custbody_mg_inhousedate}
-       <br/>${record.custbody_mg_exfactorydate}
-       <br/>${record.custbody_mg_reviseddate}</td>
+
+	<tr style="line-height:120%">
+	<td class="address" width="30%">${record.billaddress}</td>
+    <td class="address" width="30%"> </td>  
+	<td class="address" width="40%">${record.shipaddress}</td>
 	</tr></table>
-&nbsp;
-<!--
-<table class="body" style="width: 100%;"><tr>
-	<th style="width: 20%;">Issued:</th>
-	<th style="width: 15%;">${record.custbody_mg_inhousedate@label?upper_case}</th>
-	<th style="width: 20%;">${record.custbody_mg_exfactorydate@label?upper_case}</th>
-	<th style="width: 30%;">${record.custbody_mg_reviseddate@label?upper_case}</th>
-	</tr>
-	<tr>
-	<td style="width: 20%;">${record.trandate}</td>
-	<td style="width: 15%;">${record.custbody_mg_inhousedate}</td>
-	<td style="width: 20%;">${record.custbody_mg_exfactorydate}</td>
-	<td style="width: 30%;">${record.custbody_mg_reviseddate}</td>
-	</tr></table>
-  -->
+
 <#if record.item?has_content>
     <#assign uniqueGroups = [] />
+    <#assign totalPOQuantity = 0 />
     <!-- Create a composite key for each unique group -->
     <#list record.item as item>
         <#assign cleanRate = (item.rate?string("0.00"))?replace(",", "")?replace("$", "") />
@@ -261,19 +255,19 @@
         <#assign chunkedSizes = paddedSizes?chunk(10) />
 
         <!-- Display location above each table -->
-        <p style="text-align: right; font-size: 7pt; margin-bottom: 5px;"><strong>Location:</strong> ${lineLocation}</p>
+        <p style="text-align: right; font-size: 5pt; margin-bottom: 1px;"><strong>Location:</strong> ${lineLocation}</p>
 
         <#list chunkedSizes as sizeChunk>
-            <table class="itemtable" style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 20px; font-size: 7pt;">
-                <thead>
+            <table class="itemtable" style="width: 100%; border-collapse: collapse; text-align: center; margin-bottom: 10px; font-size: 7pt;">
+                <thead style="padding: 0pt; margin: 0pt">
                     <tr>
-                        <th style="text-align: left; width: 18%; font-size: 7pt;">Style<br/>Number</th>
+                        <th style="text-align: left; width: 18%; font-size: 7pt;">Style Number</th>
                         <#list sizeChunk as sizeObj>
                             <th style="text-align: center; width: 5.5%; font-size: 7pt;">${sizeObj.size}</th>
                         </#list>
-                        <th style="text-align: center; width: 9%; font-size: 7pt;">Total<br/>Quantity</th>
-                        <th style="text-align: center; width: 9%; font-size: 7pt;">Unit<br/>Cost</th>
-                        <th style="text-align: right; width: 9%; font-size: 7pt;">Total<br/>Price</th>
+                        <th style="text-align: center; width: 9%; font-size: 7pt;">Quantity</th>
+                        <th style="text-align: center; width: 9%; font-size: 7pt;">Unit Cost</th>
+                        <th style="text-align: right; width: 9%; font-size: 7pt;">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -302,13 +296,14 @@
                             <#list items as it>
                                 <#if it.quantity??>
                                     <#assign totalQuantity += it.quantity />
+                                    <#assign totalPOQuantity += it.quantity />
                                 </#if>
                             </#list>
-                            ${totalQuantity}
+                            ${totalQuantity?string("#,##0")}
                         </td>
 
                         <!-- Unit Cost -->
-                        <td style="text-align: center;">${rate}</td>
+                        <td style="text-align: center;">${rate?string("#,##0.00")}</td>
 
                         <!-- Total Price -->
                         <td style="text-align: right;">
@@ -318,7 +313,7 @@
                                     <#assign totalAmount += it.amount />
                                 </#if>
                             </#list>
-                            ${totalAmount}
+                            ${totalAmount?string("#,##0.00")}
                         </td>
                     </tr>
                 </tbody>
@@ -350,10 +345,15 @@
     </#if>
     <hr />
     <table class="total" style="width: 100%;">
+         <tr class="totalrow">
+            <td background-color="#ffffff" colspan="4"></td>
+            <td align="right"><b>Total Quantity</b></td>
+            <td align="right">${totalPOQuantity?string("#,##0")}</td>
+        </tr>
         <tr class="totalrow">
             <td background-color="#ffffff" colspan="4"></td>
-            <td align="right"><b>${record.total@label}</b></td>
-            <td align="right">${record.total}</td>
+            <td align="right"><b>Total Value</b></td>
+            <td align="right">${record.total?string("#,##0.00")}</td>
         </tr>
     </table>
 </body>
