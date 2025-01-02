@@ -1,3 +1,5 @@
+//  2025-01-01 Deprecated. Script is still functional, but doesn't run on create as desired, since units are committed after the script fires. Since nothing is committed, there's no IF to generate.
+
 /**
  * @NApiVersion 2.1
  * @NScriptType UserEventScript
