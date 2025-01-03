@@ -1,17 +1,10 @@
 /**
  * @NApiVersion 2.1
  * @NScriptType MapReduceScript
- *
- * Script Name:     MG_3PL_Shipment_Processor.js
- * Author:          Your Name
- * Date:            Today's Date
  */
 
 define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
-  /**
-   * getInputData():
-   *   Load the saved search that feeds shipment lines into the script.
-   */
+
   function getInputData() {
     const searchId = 'customsearch_mg_mr_3plshipmentprocessor';
     log.audit('getInputData', `Loading search ID: ${searchId}`);
@@ -21,7 +14,6 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       loadedSearch = search.load({ id: searchId });
     } catch (e) {
       log.error('getInputData - Error Loading Search', `Search ID: ${searchId}, Error: ${e.message}`);
-      // Re-throw so the script fails fast if the search can't be loaded
       throw e;
     }
 
@@ -30,7 +22,6 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
   }
 
   /**
-   * map():
    *   For each search result, parse the row, log debug info, group by 3PL shipment key.
    */
   function map(context) {
@@ -38,7 +29,6 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       const searchResult = JSON.parse(context.value);
       log.debug('map - Raw Search Result', JSON.stringify(searchResult, null, 2));
 
-      // Attempt to read the 3PL Shipment reference
       const shipmentRef = searchResult.values['custrecord_pkgitem_shipment'];
       const shipmentId = shipmentRef?.value || null;
 
@@ -50,14 +40,11 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           value: searchResult
         });
       } else {
-        // If no shipment ID, we log a warning
         log.warning('map - Missing Shipment ID', `Search Result ID: ${searchResult.id}`);
       }
 
     } catch (e) {
       log.error('map - Error Parsing Context Value', e.message);
-      // We can't recover from a broken search row, so we do not re-throw. 
-      // Alternatively, re-throw if you want the entire script to fail.
     }
   }
 
@@ -97,12 +84,13 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       let totalCartonsField = 0;
       let dateShipped = null;
       let itemFulfillmentId = null;
+      let maxLabelCost = 0;
 
       // For item aggregation
       let aggregatedItems = {};
 
       lines.forEach(line => {
-        // Debug each line
+
         log.debug('reduce - processing line', line);
 
         let itemId = line.values['custrecord_pkgitem_item']?.value;
@@ -112,13 +100,13 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         totalQuantityFromLines += qty;
         if (pkgId) {
           if (!distinctPackages[pkgId]) {
-          
+
             const rawWeight = parseFloat(line.values['custrecord_pkg_weight.CUSTRECORD_PKGITEM_PKG']) || 0.001;
             const trackNum = line.values['custrecord_pkg_trackingnum.CUSTRECORD_PKGITEM_PKG'] || '';
             const trackUrl = line.values['custrecord_pkg_trackingurl.CUSTRECORD_PKGITEM_PKG'] || '';
             const carrier = line.values['custrecord_pkg_carrier.CUSTRECORD_PKGITEM_PKG'] || '';
 
-            
+
             distinctPackages[pkgId] = {
               pkgId: pkgId,
               weightLbs: rawWeight,
@@ -128,10 +116,8 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
             };
           }
         }
-        
-        // IF
+
         itemFulfillmentId = line.values['custrecord_pkgitem_if']?.value;
-        // Shipped date
         dateShipped = line.values['custrecord_shipment_date_shipped.CUSTRECORD_PKGITEM_SHIPMENT'];
 
         // The "header" fields for total quantity, total cartons
@@ -143,16 +129,24 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           line.values['custrecord_shipment_totalcartons.CUSTRECORD_PKGITEM_SHIPMENT']
         ) || 0;
 
-        // Aggregate item quantity
+        // Aggregate item quantity from each shipment line
         if (itemId) {
           aggregatedItems[itemId] = (aggregatedItems[itemId] || 0) + qty;
         } else {
           log.warning('reduce - Missing Item ID', `Line: ${JSON.stringify(line)}`);
         }
+
+        // Find the max cost for each shipping label
+        const rawCostStr = line.values['custrecord_pkg_label_cost.CUSTRECORD_PKGITEM_PKG'];
+        const cost = parseFloat(rawCostStr) || 0;
+        if (cost > maxLabelCost) {
+          maxLabelCost = cost;
+        }
+        log.debug('maxLabelCost',maxLabelCost)
       });
 
       let distinctPackageCount = Object.keys(distinctPackages).length;
-      
+
       log.debug('reduce - totalQuantityFromLines', totalQuantityFromLines);
       log.debug('reduce - totalQuantityField', totalQuantityField);
       log.debug('reduce - distinctPackageCount', distinctPackageCount);
@@ -289,33 +283,38 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         }
       }
 
-            let anyShortShip = (shortShips.length > 0);
+      let anyShortShip = (shortShips.length > 0);
 
-      
+
       if (anyShortShip) {
-  const shortShipPayload = shortShips.map(s => ({
-    itemName: s.itemName,
-    qty: s.shortQty
-  }));
+        const shortShipPayload = shortShips.map(s => ({
+          itemName: s.itemName,
+          qty: s.shortQty
+        }));
 
-  ifRec.setValue({
-    fieldId: 'custbody_mg_if_shortshipped_items',
-    value: JSON.stringify(shortShipPayload)
-  });
-} else {
-  ifRec.setValue({
-    fieldId: 'custbody_mg_if_shortshipped_items',
-    value: '[]'
-  });
-}
+        ifRec.setValue({
+          fieldId: 'custbody_mg_if_shortshipped_items',
+          value: JSON.stringify(shortShipPayload)
+        });
+      } else {
+        ifRec.setValue({
+          fieldId: 'custbody_mg_if_shortshipped_items',
+          value: '[]'
+        });
+      }
 
+        ifRec.setValue({
+          fieldId: 'custbody_mg_shippinglabel_cost',
+          value: maxLabelCost
+        });
+      
       if (distinctPackageCount > 0) {
         log.debug('reduce', `Found ${distinctPackageCount} packages, adding them to the IF...`);
         addPackagesToIF(ifRec, distinctPackages);
       } else {
         log.debug('reduce', 'No packages found, skipping addPackagesToIF()');
       }
-      
+
       try {
         ifRec.save();
         log.audit('reduce - IF Saved', `IF ID: ${itemFulfillmentId}, Shipment: ${shipmentId}`);
@@ -492,8 +491,8 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           sublistId: 'item',
           fieldId: 'itemname'
         }) || '';
-log.debug('itemName',itemName)
-        
+        log.debug('itemName', itemName)
+
         lines.push({
           index: i,
           lineId: parseInt(lineId),
@@ -554,42 +553,42 @@ log.debug('itemName',itemName)
    * Helper: addPackagesToIF()
    **************************************/
   function addPackagesToIF(ifRec, distinctPackages) {
-      // 1) Clear existing package lines
-  let pkgCount = ifRec.getLineCount({ sublistId: 'package' }) || 0;
-  for (let i = pkgCount - 1; i >= 0; i--) {
-    ifRec.removeLine({ sublistId: 'package', line: i });
-  }
+    // 1) Clear existing package lines
+    let pkgCount = ifRec.getLineCount({ sublistId: 'package' }) || 0;
+    for (let i = pkgCount - 1; i >= 0; i--) {
+      ifRec.removeLine({ sublistId: 'package', line: i });
+    }
 
-  // 2) Add new package lines
-    
-  const pkgIds = Object.keys(distinctPackages);
-  pkgIds.forEach(pkgId => {
-    const pkgObj = distinctPackages[pkgId];
+    // 2) Add new package lines
 
-    ifRec.selectNewLine({ sublistId: 'package' });
+    const pkgIds = Object.keys(distinctPackages);
+    pkgIds.forEach(pkgId => {
+      const pkgObj = distinctPackages[pkgId];
 
-    ifRec.setCurrentSublistValue({
-      sublistId: 'package',
-      fieldId: 'packagetrackingnumber',
-      value: pkgObj.trackingNum
+      ifRec.selectNewLine({ sublistId: 'package' });
+
+      ifRec.setCurrentSublistValue({
+        sublistId: 'package',
+        fieldId: 'packagetrackingnumber',
+        value: pkgObj.trackingNum
+      });
+      ifRec.setCurrentSublistValue({
+        sublistId: 'package',
+        fieldId: 'packageweight',
+        value: pkgObj.weightLbs.toFixed(3)
+      });
+
+      ifRec.setCurrentSublistValue({
+        sublistId: 'package',
+        fieldId: 'packagedescr',
+        value: (pkgObj.carrier || '') + '|' + (pkgObj.trackingUrl || '')
+      });
+
+      ifRec.commitLine({ sublistId: 'package' });
     });
-    ifRec.setCurrentSublistValue({
-      sublistId: 'package',
-      fieldId: 'packageweight',
-      value: pkgObj.weightLbs.toFixed(3)
-    });
-    
-    ifRec.setCurrentSublistValue({
-      sublistId: 'package',
-      fieldId: 'packagedescr',
-      value: (pkgObj.carrier || '') + '|' + (pkgObj.trackingUrl || '')
-    });
 
-    ifRec.commitLine({ sublistId: 'package' });
-  });
-
-  log.debug('addPackagesToIF', 
-    `Added ${pkgIds.length} package(s) to IF ${ifRec.id} from distinctPackages.`);
+    log.debug('addPackagesToIF',
+      `Added ${pkgIds.length} package(s) to IF ${ifRec.id} from distinctPackages.`);
   }
 
   return {
