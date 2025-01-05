@@ -5,6 +5,9 @@
 
 define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
 
+  // List of shipmethod IDs to exclude from adding to shippingcost on IF for Wholesale shipments that don't have 3rd party billing accounts
+  const EXCLUDED_SHIPMETHODS = [47333, 112710]; //Freight, Global-E
+
   function getInputData() {
     const searchId = 'customsearch_mg_mr_3plshipmentprocessor';
     log.audit('getInputData', `Loading search ID: ${searchId}`);
@@ -199,14 +202,29 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         return;
       }
 
-      const soInternalId = ifRec.getValue({ fieldId: 'createdfrom' });
-      if (!soInternalId) {
-        let errNote = 'No Sales Order on IF. Cannot proceed.';
-        log.error('reduce - Missing SO', errNote);
+      const createdFromId = ifRec.getValue({ fieldId: 'createdfrom' });
+      if (!createdFromId) {
+        let errNote = 'No Created-From record on IF. Cannot proceed.';
+        log.error('reduce - Missing CreatedFrom', errNote);
         setShipmentStatus(shipmentId, 4, errNote);
         return;
       }
 
+       /************************************************
+       * 5) Load SO, update short-ship fields
+       ************************************************/
+      
+            let createdFromRec = loadCreatedFromRecord(createdFromId);
+            if (!createdFromRec) {
+              // If neither Sales Order nor Transfer Order, skip short-ship logic
+              log.debug('reduce', 'Created-From record is neither SalesOrd nor TransferOrd. Skipping short-ship updates.');
+              // Mark processed, done
+              setShipmentStatus(shipmentId, 3);
+              return;
+            }
+      
+            const createdFromType = createdFromRec.type; // store property from loadCreatedFromRecord
+      
       let ifLines = gatherIFLines(ifRec);
       log.debug('reduce - Gathered IF Lines', JSON.stringify(ifLines));
 
@@ -307,6 +325,35 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           fieldId: 'custbody_mg_shippinglabel_cost',
           value: maxLabelCost
         });
+
+        if (createdFromType === record.Type.SALES_ORDER) {
+
+          let soClassVal = createdFromRec.getValue({ fieldId: 'class' });
+          let ifShipmethod = ifRec.getValue({ fieldId: 'shipmethod' });
+          let thirdPartyAcct = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_account' }) || '';
+          let thirdPartyCarrier = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_carrier' }) || '';
+    
+          if (soClassVal == 2 // wholesale
+              && ifShipmethod
+              && !EXCLUDED_SHIPMETHODS.includes(parseInt(ifShipmethod, 10))
+              && thirdPartyAcct.trim() !== ''
+              && thirdPartyCarrier.trim() !== ''
+          ) {
+            log.debug('Set IF shippingcost to maxLabelCost', maxLabelCost);
+            
+            ifRec.setValue({
+              fieldId: 'shippingcost',
+              value: maxLabelCost
+            });
+
+
+          }
+        }
+
+
+
+
+
       
       if (distinctPackageCount > 0) {
         log.debug('reduce', `Found ${distinctPackageCount} packages, adding them to the IF...`);
@@ -325,45 +372,38 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         return;
       }
 
-      /************************************************
-       * 5) Load SO, update short-ship fields
-       ************************************************/
-      let soRec;
-      try {
-        soRec = record.load({
-          type: record.Type.SALES_ORDER,
-          id: soInternalId,
-          isDynamic: true
-        });
-        log.debug('SO Loaded', soInternalId);
-      } catch (e) {
-        let errNote = `Failed to load SO ${soInternalId} for short-ship update: ${e.message}`;
-        log.error('reduce - SO Load Error', errNote);
-        setShipmentStatus(shipmentId, 4, errNote);
-        return;
-      }
+
+       /************************************************
+        * * 4) Apply short-ship logic for BOTH SalesOrd + TransferOrd
+        *************************************************/
+
+       if (createdFromType === record.Type.SALES_ORDER ||
+        createdFromType === record.Type.TRANSFER_ORDER) {
+
+      
 
       // For each shortShip, find the SO line by orderLine
       shortShips.forEach(s => {
-        log.debug('SO Shortship Line id s.orderLine', s.orderLine);
+        log.debug('Shortship line on CreatedFrom record, orderLine:', s.orderLine);
 
-        soRec.selectLine({ sublistId: 'item', line: s.orderLine - 1 });
+        createdFromRec.selectLine({ sublistId: 'item', line: s.orderLine - 1 });
+        
 
         // increment custcol_mg_shortship_quantity
         let existingShort = parseFloat(
-          soRec.getCurrentSublistValue({
+          createdFromRec.getCurrentSublistValue({
             sublistId: 'item',
             fieldId: 'custcol_mg_shortship_quantity'
           })
         ) || 0;
-        soRec.setCurrentSublistValue({
+        createdFromRec.setCurrentSublistValue({
           sublistId: 'item',
           fieldId: 'custcol_mg_shortship_quantity',
           value: existingShort + s.shortQty
         });
 
         // add to shortship_details field
-        let existingDetails = soRec.getCurrentSublistValue({
+        let existingDetails = createdFromRec.getCurrentSublistValue({
           sublistId: 'item',
           fieldId: 'custcol_mg_shortship_details'
         }) || '';
@@ -380,34 +420,39 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         let currentVal = detailsObj[s.docNum] || 0;
         detailsObj[s.docNum] = currentVal + s.shortQty;
 
-        soRec.setCurrentSublistValue({
+        createdFromRec.setCurrentSublistValue({
           sublistId: 'item',
           fieldId: 'custcol_mg_shortship_details',
           value: JSON.stringify(detailsObj)
         });
         log.debug('SO custcol_mg_shortship_details to set', JSON.stringify(detailsObj));
 
-        soRec.commitLine({ sublistId: 'item' });
+        createdFromRec.commitLine({ sublistId: 'item' });
       });
 
       if (anyShortShip) {
-        soRec.setValue({
+        createdFromRec.setValue({
           fieldId: 'custbody_mg_fulfillmenthold',
           value: 4
         });
         log.debug('SO custbody_mg_fulfillmenthold set to', '4');
       }
+    } else {
+      log.debug('reduce', `CreatedFrom type ${createdFromType} is not recognized for short-ship logic? Skipping.`);
+    }
 
-      // Save the SO
+      // Save the CreatedFrom Rec
       try {
-        soRec.save();
-        log.audit('reduce - SO Saved', `SO ID: ${soInternalId}, Shipment: ${shipmentId}`);
+        let createdFromSaveId = createdFromRec.save();
+        log.audit('reduce - CreatedFrom Saved',  '${createdFromType} ID: ${createdFromSaveId}, Shipment: ${shipmentId}');
       } catch (e) {
-        let errNote = `Failed to save SO ${soInternalId}. Error: ${e.message}`;
-        log.error('reduce - SO Save Error', errNote);
+        let errNote = `Failed to save CreatedFrom (ID ${createdFromId}). Error: ${e.message}`;
+        log.error('reduce - CreatedFrom Save Error', errNote);
         setShipmentStatus(shipmentId, 4, errNote);
         return;
       }
+
+  
 
       /************************************************
        * 6) Mark 3PL Shipment => "Processed"
@@ -590,6 +635,46 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
     log.debug('addPackagesToIF',
       `Added ${pkgIds.length} package(s) to IF ${ifRec.id} from distinctPackages.`);
   }
+
+ /**************************************
+   * Helper: loadCreatedFromRecord(tranId)
+   *   Attempt to load the record as a Sales Order first.
+   *   If that fails, try Transfer Order.
+   *   If both fail, return null.
+   **************************************/
+ function loadCreatedFromRecord(tranId) {
+  // Try Sales Order
+  try {
+    let soRec = record.load({
+      type: record.Type.SALES_ORDER,
+      id: tranId,
+      isDynamic: true
+    });
+    if (soRec) {
+      soRec.type = record.Type.SALES_ORDER;
+      return soRec;
+    }
+  } catch (e) {
+    log.debug('Not a Sales Order', e.message);
+  }
+
+  // Try Transfer Order
+  try {
+    let toRec = record.load({
+      type: record.Type.TRANSFER_ORDER,
+      id: tranId,
+      isDynamic: true
+    });
+    if (toRec) {
+      toRec.type = record.Type.TRANSFER_ORDER;
+      return toRec;
+    }
+  } catch (e) {
+    log.debug('Not a Transfer Order', e.message);
+  }
+
+  return null;
+}
 
   return {
     getInputData,
