@@ -105,7 +105,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           if (!distinctPackages[pkgId]) {
 
             const rawWeight = parseFloat(line.values['custrecord_pkg_weight.CUSTRECORD_PKGITEM_PKG']) || 0.001;
-            const weightLbs = rawWeightOunces / 16.0;
+            const weightLbs = rawWeight / 16.0;
             const trackNum = line.values['custrecord_pkg_trackingnum.CUSTRECORD_PKGITEM_PKG'] || '';
             const trackUrl = line.values['custrecord_pkg_trackingurl.CUSTRECORD_PKGITEM_PKG'] || '';
             const carrier = line.values['custrecord_pkg_carrier.CUSTRECORD_PKGITEM_PKG'] || '';
@@ -204,6 +204,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       }
 
       const createdFromId = ifRec.getValue({ fieldId: 'createdfrom' });
+      log.debug('createdFromId',createdFromId);
       if (!createdFromId) {
         let errNote = 'No Created-From record on IF. Cannot proceed.';
         log.error('reduce - Missing CreatedFrom', errNote);
@@ -378,10 +379,8 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
        * * 4) Apply short-ship logic for BOTH SalesOrd + TransferOrd
        *************************************************/
 
-      if (createdFromType === record.Type.SALES_ORDER ||
-        createdFromType === record.Type.TRANSFER_ORDER) {
-
-
+      if (anyShortShip && (createdFromType === record.Type.SALES_ORDER ||
+        createdFromType === record.Type.TRANSFER_ORDER)) {
 
         // For each shortShip, find the SO line by orderLine
         shortShips.forEach(s => {
@@ -651,8 +650,10 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         id: tranId,
         isDynamic: true
       });
+      log.debug('loadCreatedFromRecord-soRec',soRec);
       if (soRec) {
-        soRec.type = record.Type.SALES_ORDER;
+        //soRec.type = record.Type.SALES_ORDER;
+        log.debug('loadCreatedFromRecord-soRec-type',soRec.type);
         return soRec;
       }
     } catch (e) {
@@ -667,7 +668,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         isDynamic: true
       });
       if (toRec) {
-        toRec.type = record.Type.TRANSFER_ORDER;
+        //toRec.type = record.Type.TRANSFER_ORDER;
         return toRec;
       }
     } catch (e) {
