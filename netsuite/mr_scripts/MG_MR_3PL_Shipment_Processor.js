@@ -105,6 +105,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           if (!distinctPackages[pkgId]) {
 
             const rawWeight = parseFloat(line.values['custrecord_pkg_weight.CUSTRECORD_PKGITEM_PKG']) || 0.001;
+            const weightLbs = rawWeightOunces / 16.0;
             const trackNum = line.values['custrecord_pkg_trackingnum.CUSTRECORD_PKGITEM_PKG'] || '';
             const trackUrl = line.values['custrecord_pkg_trackingurl.CUSTRECORD_PKGITEM_PKG'] || '';
             const carrier = line.values['custrecord_pkg_carrier.CUSTRECORD_PKGITEM_PKG'] || '';
@@ -112,7 +113,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
 
             distinctPackages[pkgId] = {
               pkgId: pkgId,
-              weightLbs: rawWeight,
+              weightLbs: weightLbs,
               trackingNum: trackNum,
               trackingUrl: trackUrl,
               carrier: carrier
