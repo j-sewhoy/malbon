@@ -9,7 +9,7 @@ define([
 ], function(record, search, log) {
 
 
-    var TEST_ID = 3617; // <-- For testing, set a specific internal ID for the custom record
+    var TEST_ID = 3650; // <-- For testing, set a specific internal ID for the custom record
 
     /**
      * Scheduled Script entry point
@@ -112,6 +112,7 @@ define([
         // 4) Summarize how many total units we want to receive for each item
         //    newPayloadReceived = sum of lineObj.received
         var summaryByItem = {}; // { itemId: { received: #, good: #, defective: # } }
+        var itemIdToSku = {}; // We'll store a map itemId->sku to help with leftover logging.
         for (var i = 0; i < items.length; i++) {
             var lineObj     = items[i];
             var sku         = lineObj.sku;
@@ -126,6 +127,9 @@ define([
                 markAsError(receiptId, 'Item not found for SKU=' + sku);
                 return;
             }
+
+          // Store item->SKU for later logging
+            itemIdToSku[itemId] = sku;
 
             if (!summaryByItem[itemId]) {
                 summaryByItem[itemId] = { 
@@ -153,7 +157,7 @@ define([
             if (newPayloadQty < alreadyRecQty) {
                 // Means we got a "smaller total" from the 3PL than we already have in NS
                 var errMsg = 'New payload for itemId=' + itemIdKey + 
-                             ' says ' + newPayloadQty + 
+                             ' has total= ' + newPayloadQty + 
                              ' but RA already has ' + alreadyRecQty + 
                              ' received. Marking error.';
                 markAsError(receiptId, errMsg);
@@ -204,8 +208,7 @@ define([
         var raLineCount = raRec.getLineCount({ sublistId: 'item' });
         log.debug('RA Line Count', raLineCount);
 
-        // We’ll keep track of how many items are STILL leftover after we fill the RA lines
-        // in case the RA does not have a line for them. Then we’ll create new lines in IR for them.
+         // leftoverByItem will hold how many units remain after we fill RA lines.
         var leftoverByItem = JSON.parse(JSON.stringify(summaryByItem));
 
         // 10) Allocate item quantities across existing RA lines
@@ -272,10 +275,11 @@ define([
             }
         }
 
-        // 11) If there are leftover items that are not on the RA at all, 
-        //     we proceed to create lines with no `orderline`. 
-        //     This depends on your account’s preference to allow receiving 
-        //     items not on the transaction. 
+        // 11) If there are leftover items that are **not** on the RA at all,
+        //     we will now **skip** them. 
+        //     We do NOT add them to the IR (since NetSuite disallows receiving items not on the RA).
+        //     Instead, we log them in the custom record's error field.
+        var skippedArr = [];
         for (var leftoverItemId in leftoverByItem) {
             if (!leftoverByItem.hasOwnProperty(leftoverItemId)) continue;
 
@@ -285,24 +289,12 @@ define([
                 continue;  // no leftover
             }
 
-            // We'll add lines for "good" and "defective" if > 0
-            if (leftoverObj.good > 0) {
-                addIRLine(irRec, {
-                    // no orderline => not referencing a specific RA line
-                    orderline: null,
-                    itemId:    leftoverItemId,
-                    quantity:  leftoverObj.good,
-                    location:  10 // ECOM
-                });
-            }
-            if (leftoverObj.defective > 0) {
-                addIRLine(irRec, {
-                    orderline: null,
-                    itemId:    leftoverItemId,
-                    quantity:  leftoverObj.defective,
-                    location:  15 // Defective
-                });
-            }
+            // That means there's leftover we cannot allocate to any RA lines. 
+            // Let's gather the SKU and leftover total.
+            var leftoverSku = itemIdToSku[leftoverItemId] || ('ItemID=' + leftoverItemId);
+            skippedArr.push('SKU=' + leftoverSku + ', Qty=' + totalLeft);
+
+          
         }
 
         // 12) Save the Item Receipt if any lines are marked to receive
@@ -326,16 +318,22 @@ define([
             log.debug('No lines to receive', 'No changes saved to IR');
         }
 
-        // 13) Mark the custom record as Complete
-        record.submitFields({
+        // 13) If we skipped anything, note it in the RMA custom record's error field
+        var errorLog = '';
+        if (skippedArr.length > 0) {
+            errorLog = 'Skipped items not on RA:\n' + skippedArr.join('\n');
+          }
+
+        // 14) Mark the custom record as Complete, store any skip info in the error field
+          record.submitFields({
             type: 'customrecord_mg_rma_receipt',
             id: receiptId,
             values: {
                 custrecord_rmareceipt_scriptprocessstatu: '3', // 3 = Completed
-                custrecord_rmareceipt_scripterror: ''
+                custrecord_rmareceipt_scripterror: 'errorLog'
             }
         });
-        log.debug('Marked RMA Receipt Complete', 'receiptId=' + receiptId);
+        log.debug('Marked RMA Receipt Complete', 'receiptId=' + receiptId + ', skipped=' + skippedArr.length);
     }
 
     /**
@@ -367,8 +365,7 @@ define([
     /**
      * addIRLine:
      * In dynamic mode, create a new line for the IR. 
-     * If "orderline" is null, we skip setting that field, which may allow 
-     * receiving an item not on the original RA, depending on your config.
+     * We only call this for items/lines that exist on the RA.
      */
     function addIRLine(irRec, opts) {
         irRec.selectNewLine({ sublistId: 'item' });
