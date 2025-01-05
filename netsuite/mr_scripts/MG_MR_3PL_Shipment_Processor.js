@@ -381,7 +381,23 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
 
       if (anyShortShip && (createdFromType === record.Type.SALES_ORDER ||
         createdFromType === record.Type.TRANSFER_ORDER)) {
+if(createdFromType === record.Type.SALES_ORDER) {
+  let createdFromRec = record.load({
+        type: record.Type.SALES_ORDER,
+        id: createdFromId,
+        isDynamic: true
+      });
+    } 
+    if(createdFromType === record.Type.TRANSFER_ORDER) {
+  let createdFromRec = record.load({
+        type: record.Type.TRANSFER_ORDER,
+        id: createdFromId,
+        isDynamic: true
+      });
+    } 
+    
 
+        
         // For each shortShip, find the SO line by orderLine
         shortShips.forEach(s => {
           log.debug('Shortship line on CreatedFrom record, orderLine:', s.orderLine);
