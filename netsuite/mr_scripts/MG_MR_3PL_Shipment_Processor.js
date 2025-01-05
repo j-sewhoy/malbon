@@ -145,7 +145,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         if (cost > maxLabelCost) {
           maxLabelCost = cost;
         }
-        log.debug('maxLabelCost',maxLabelCost)
+        log.debug('maxLabelCost', maxLabelCost)
       });
 
       let distinctPackageCount = Object.keys(distinctPackages).length;
@@ -210,21 +210,21 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         return;
       }
 
-       /************************************************
-       * 5) Load SO, update short-ship fields
-       ************************************************/
-      
-            let createdFromRec = loadCreatedFromRecord(createdFromId);
-            if (!createdFromRec) {
-              // If neither Sales Order nor Transfer Order, skip short-ship logic
-              log.debug('reduce', 'Created-From record is neither SalesOrd nor TransferOrd. Skipping short-ship updates.');
-              // Mark processed, done
-              setShipmentStatus(shipmentId, 3);
-              return;
-            }
-      
-            const createdFromType = createdFromRec.type; // store property from loadCreatedFromRecord
-      
+      /************************************************
+      * 5) Load SO, update short-ship fields
+      ************************************************/
+
+      let createdFromRec = loadCreatedFromRecord(createdFromId);
+      if (!createdFromRec) {
+        // If neither Sales Order nor Transfer Order, skip short-ship logic
+        log.debug('reduce', 'Created-From record is neither SalesOrd nor TransferOrd. Skipping short-ship updates.');
+        // Mark processed, done
+        setShipmentStatus(shipmentId, 3);
+        return;
+      }
+
+      const createdFromType = createdFromRec.type; // store property from loadCreatedFromRecord
+
       let ifLines = gatherIFLines(ifRec);
       log.debug('reduce - Gathered IF Lines', JSON.stringify(ifLines));
 
@@ -321,40 +321,40 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         });
       }
 
-        ifRec.setValue({
-          fieldId: 'custbody_mg_shippinglabel_cost',
-          value: maxLabelCost
-        });
+      ifRec.setValue({
+        fieldId: 'custbody_mg_shippinglabel_cost',
+        value: maxLabelCost
+      });
 
-        if (createdFromType === record.Type.SALES_ORDER) {
+      if (createdFromType === record.Type.SALES_ORDER) {
 
-          let soClassVal = createdFromRec.getValue({ fieldId: 'class' });
-          let ifShipmethod = ifRec.getValue({ fieldId: 'shipmethod' });
-          let thirdPartyAcct = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_account' }) || '';
-          let thirdPartyCarrier = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_carrier' }) || '';
-    
-          if (soClassVal == 2 // wholesale
-              && ifShipmethod
-              && !EXCLUDED_SHIPMETHODS.includes(parseInt(ifShipmethod, 10))
-              && thirdPartyAcct.trim() !== ''
-              && thirdPartyCarrier.trim() !== ''
-          ) {
-            log.debug('Set IF shippingcost to maxLabelCost', maxLabelCost);
-            
-            ifRec.setValue({
-              fieldId: 'shippingcost',
-              value: maxLabelCost
-            });
+        let soClassVal = createdFromRec.getValue({ fieldId: 'class' });
+        let ifShipmethod = ifRec.getValue({ fieldId: 'shipmethod' });
+        let thirdPartyAcct = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_account' }) || '';
+        let thirdPartyCarrier = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_carrier' }) || '';
+
+        if (soClassVal == 2 // wholesale
+          && ifShipmethod
+          && !EXCLUDED_SHIPMETHODS.includes(parseInt(ifShipmethod, 10))
+          && thirdPartyAcct.trim() !== ''
+          && thirdPartyCarrier.trim() !== ''
+        ) {
+          log.debug('Set IF shippingcost to maxLabelCost', maxLabelCost);
+
+          ifRec.setValue({
+            fieldId: 'shippingcost',
+            value: maxLabelCost
+          });
 
 
-          }
         }
+      }
 
 
 
 
 
-      
+
       if (distinctPackageCount > 0) {
         log.debug('reduce', `Found ${distinctPackageCount} packages, adding them to the IF...`);
         addPackagesToIF(ifRec, distinctPackages);
@@ -373,78 +373,78 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       }
 
 
-       /************************************************
-        * * 4) Apply short-ship logic for BOTH SalesOrd + TransferOrd
-        *************************************************/
+      /************************************************
+       * * 4) Apply short-ship logic for BOTH SalesOrd + TransferOrd
+       *************************************************/
 
-       if (createdFromType === record.Type.SALES_ORDER ||
+      if (createdFromType === record.Type.SALES_ORDER ||
         createdFromType === record.Type.TRANSFER_ORDER) {
 
-      
 
-      // For each shortShip, find the SO line by orderLine
-      shortShips.forEach(s => {
-        log.debug('Shortship line on CreatedFrom record, orderLine:', s.orderLine);
 
-        createdFromRec.selectLine({ sublistId: 'item', line: s.orderLine - 1 });
-        
+        // For each shortShip, find the SO line by orderLine
+        shortShips.forEach(s => {
+          log.debug('Shortship line on CreatedFrom record, orderLine:', s.orderLine);
 
-        // increment custcol_mg_shortship_quantity
-        let existingShort = parseFloat(
-          createdFromRec.getCurrentSublistValue({
+          createdFromRec.selectLine({ sublistId: 'item', line: s.orderLine - 1 });
+
+
+          // increment custcol_mg_shortship_quantity
+          let existingShort = parseFloat(
+            createdFromRec.getCurrentSublistValue({
+              sublistId: 'item',
+              fieldId: 'custcol_mg_shortship_quantity'
+            })
+          ) || 0;
+          createdFromRec.setCurrentSublistValue({
             sublistId: 'item',
-            fieldId: 'custcol_mg_shortship_quantity'
-          })
-        ) || 0;
-        createdFromRec.setCurrentSublistValue({
-          sublistId: 'item',
-          fieldId: 'custcol_mg_shortship_quantity',
-          value: existingShort + s.shortQty
-        });
+            fieldId: 'custcol_mg_shortship_quantity',
+            value: existingShort + s.shortQty
+          });
 
-        // add to shortship_details field
-        let existingDetails = createdFromRec.getCurrentSublistValue({
-          sublistId: 'item',
-          fieldId: 'custcol_mg_shortship_details'
-        }) || '';
-        let detailsObj = {};
-        if (existingDetails) {
-          try {
-            detailsObj = JSON.parse(existingDetails);
-          } catch (parseErr) {
-            log.error('reduce - JSON parse error on shortship details', parseErr.message);
-            // fallback to empty
-            detailsObj = {};
+          // add to shortship_details field
+          let existingDetails = createdFromRec.getCurrentSublistValue({
+            sublistId: 'item',
+            fieldId: 'custcol_mg_shortship_details'
+          }) || '';
+          let detailsObj = {};
+          if (existingDetails) {
+            try {
+              detailsObj = JSON.parse(existingDetails);
+            } catch (parseErr) {
+              log.error('reduce - JSON parse error on shortship details', parseErr.message);
+              // fallback to empty
+              detailsObj = {};
+            }
           }
+          let currentVal = detailsObj[s.docNum] || 0;
+          detailsObj[s.docNum] = currentVal + s.shortQty;
+
+          createdFromRec.setCurrentSublistValue({
+            sublistId: 'item',
+            fieldId: 'custcol_mg_shortship_details',
+            value: JSON.stringify(detailsObj)
+          });
+          log.debug('SO custcol_mg_shortship_details to set', JSON.stringify(detailsObj));
+
+          createdFromRec.commitLine({ sublistId: 'item' });
+        });
+
+        if (anyShortShip) {
+          createdFromRec.setValue({
+            fieldId: 'custbody_mg_fulfillmenthold',
+            value: 4
+          });
+          log.debug('SO custbody_mg_fulfillmenthold set to', '4');
         }
-        let currentVal = detailsObj[s.docNum] || 0;
-        detailsObj[s.docNum] = currentVal + s.shortQty;
-
-        createdFromRec.setCurrentSublistValue({
-          sublistId: 'item',
-          fieldId: 'custcol_mg_shortship_details',
-          value: JSON.stringify(detailsObj)
-        });
-        log.debug('SO custcol_mg_shortship_details to set', JSON.stringify(detailsObj));
-
-        createdFromRec.commitLine({ sublistId: 'item' });
-      });
-
-      if (anyShortShip) {
-        createdFromRec.setValue({
-          fieldId: 'custbody_mg_fulfillmenthold',
-          value: 4
-        });
-        log.debug('SO custbody_mg_fulfillmenthold set to', '4');
+      } else {
+        log.debug('reduce', `CreatedFrom type ${createdFromType} is not recognized for short-ship logic? Skipping.`);
       }
-    } else {
-      log.debug('reduce', `CreatedFrom type ${createdFromType} is not recognized for short-ship logic? Skipping.`);
-    }
 
       // Save the CreatedFrom Rec
       try {
         let createdFromSaveId = createdFromRec.save();
-        log.audit('reduce - CreatedFrom Saved',  '${createdFromType} ID: ${createdFromSaveId}, Shipment: ${shipmentId}');
+        log.audit('reduce - CreatedFrom Saved', '${createdFromType} ID: ${createdFromSaveId}, Shipment: ${shipmentId}');
       } catch (e) {
         let errNote = `Failed to save CreatedFrom (ID ${createdFromId}). Error: ${e.message}`;
         log.error('reduce - CreatedFrom Save Error', errNote);
@@ -452,7 +452,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         return;
       }
 
-  
+
 
       /************************************************
        * 6) Mark 3PL Shipment => "Processed"
@@ -636,45 +636,45 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       `Added ${pkgIds.length} package(s) to IF ${ifRec.id} from distinctPackages.`);
   }
 
- /**************************************
-   * Helper: loadCreatedFromRecord(tranId)
-   *   Attempt to load the record as a Sales Order first.
-   *   If that fails, try Transfer Order.
-   *   If both fail, return null.
-   **************************************/
- function loadCreatedFromRecord(tranId) {
-  // Try Sales Order
-  try {
-    let soRec = record.load({
-      type: record.Type.SALES_ORDER,
-      id: tranId,
-      isDynamic: true
-    });
-    if (soRec) {
-      soRec.type = record.Type.SALES_ORDER;
-      return soRec;
+  /**************************************
+    * Helper: loadCreatedFromRecord(tranId)
+    *   Attempt to load the record as a Sales Order first.
+    *   If that fails, try Transfer Order.
+    *   If both fail, return null.
+    **************************************/
+  function loadCreatedFromRecord(tranId) {
+    // Try Sales Order
+    try {
+      let soRec = record.load({
+        type: record.Type.SALES_ORDER,
+        id: tranId,
+        isDynamic: true
+      });
+      if (soRec) {
+        soRec.type = record.Type.SALES_ORDER;
+        return soRec;
+      }
+    } catch (e) {
+      log.debug('Not a Sales Order', e.message);
     }
-  } catch (e) {
-    log.debug('Not a Sales Order', e.message);
-  }
 
-  // Try Transfer Order
-  try {
-    let toRec = record.load({
-      type: record.Type.TRANSFER_ORDER,
-      id: tranId,
-      isDynamic: true
-    });
-    if (toRec) {
-      toRec.type = record.Type.TRANSFER_ORDER;
-      return toRec;
+    // Try Transfer Order
+    try {
+      let toRec = record.load({
+        type: record.Type.TRANSFER_ORDER,
+        id: tranId,
+        isDynamic: true
+      });
+      if (toRec) {
+        toRec.type = record.Type.TRANSFER_ORDER;
+        return toRec;
+      }
+    } catch (e) {
+      log.debug('Not a Transfer Order', e.message);
     }
-  } catch (e) {
-    log.debug('Not a Transfer Order', e.message);
-  }
 
-  return null;
-}
+    return null;
+  }
 
   return {
     getInputData,
