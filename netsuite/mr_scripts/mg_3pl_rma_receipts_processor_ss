@@ -1,0 +1,456 @@
+/**
+ * @NApiVersion 2.x
+ * @NScriptType ScheduledScript
+ */
+define([
+    'N/record',
+    'N/search',
+    'N/log'
+], function(record, search, log) {
+
+
+    var TEST_ID = 3617; // <-- For testing, set a specific internal ID for the custom record
+
+    /**
+     * Scheduled Script entry point
+     */
+    function execute(context) {
+        try {
+            log.audit('RMA Receipt Script', 'Begin execution');
+
+            // 1) Search for unprocessed RMA Receipt records
+            var rmaReceiptSearch = search.create({
+                type: 'customrecord_mg_rma_receipt',
+                filters: [
+                    ['custrecord_rmareceipt_scriptprocessstatu', 'anyof', '@NONE@'],
+                    'AND',
+                   ['internalid','anyof', TEST_ID]
+                ],
+                columns: [
+                    search.createColumn({ name: 'internalid' })
+                ]
+            });
+
+            var results = rmaReceiptSearch.run().getRange({ start: 0, end: 1000 });
+            if (!results || results.length === 0) {
+                log.audit('No Unprocessed RMA Receipts', 'Nothing to do');
+                return;
+            }
+
+            log.audit('Found RMA Receipts', 'Count: ' + results.length);
+
+            // 2) Process each record
+            for (var i = 0; i < results.length; i++) {
+                var recId = results[i].getValue({ name: 'internalid' });
+                try {
+                    processOneRMAReceipt(recId);
+                } catch (perRecordErr) {
+                    log.error('Error Processing RMA Receipt ' + recId, perRecordErr);
+                    markAsError(recId, perRecordErr.toString());
+                }
+            }
+
+            log.audit('RMA Receipt Script', 'End execution');
+        } catch (masterErr) {
+            log.error('Script-Level Error', masterErr);
+        }
+    }
+
+    /**
+     * Processes a single customrecord_mg_rma_receipt
+     */
+    function processOneRMAReceipt(receiptId) {
+        log.debug('processOneRMAReceipt', 'Starting receiptId=' + receiptId);
+
+        // 1) Load the custom record
+        var custRec = record.load({
+            type: 'customrecord_mg_rma_receipt',
+            id: receiptId,
+            isDynamic: true
+        });
+
+        // Mark "In Progress" (assuming '2' = In Progress)
+        custRec.setValue({
+            fieldId: 'custrecord_rmareceipt_scriptprocessstatu',
+            value: '2'
+        });
+        custRec.save();
+        log.debug('processOneRMAReceipt', 'Marked as In Progress, rec=' + receiptId);
+
+        // 2) Gather fields
+        var raId        = custRec.getValue({ fieldId: 'custrecord_rmareceipt_rma' });
+        var rawJson     = custRec.getValue({ fieldId: 'custrecord_rmareceipt_raw_json' });
+        var receiptDate = custRec.getValue({ fieldId: 'custrecord_rmareceipt_date_updated' });
+
+        // 3) Parse JSON
+        var dataObj;
+        try {
+            dataObj = JSON.parse(rawJson);
+        } catch (parseErr) {
+            var parseErrorMsg = 'JSON parse error: ' + parseErr;
+            markAsError(receiptId, parseErrorMsg);
+            return;  // Stop processing
+        }
+
+        log.debug('processOneRMAReceipt', 'Parsed JSON successfully');
+
+        var items = dataObj.items || [];
+        if (!Array.isArray(items) || items.length === 0) {
+            // No items => mark complete
+            record.submitFields({
+                type: 'customrecord_mg_rma_receipt',
+                id: receiptId,
+                values: {
+                    custrecord_rmareceipt_scriptprocessstatu: '3', // 3 = Complete
+                    custrecord_rmareceipt_scripterror: 'No items found in JSON. Nothing to process.'
+                }
+            });
+            log.audit('No Items Found in JSON', 'receiptId=' + receiptId);
+            return;
+        }
+
+        // 4) Summarize how many total units we want to receive for each item
+        //    newPayloadReceived = sum of lineObj.received
+        var summaryByItem = {}; // { itemId: { received: #, good: #, defective: # } }
+        for (var i = 0; i < items.length; i++) {
+            var lineObj     = items[i];
+            var sku         = lineObj.sku;
+            var receivedQty = parseInt(lineObj.received, 10) || 0;  // total physically arrived
+            var goodQty     = parseInt(lineObj.good, 10)     || 0;
+            var defectiveQty= receivedQty - goodQty;
+
+            if (!sku) continue;
+            var itemId = findItemBySKU(sku);
+            if (!itemId) {
+                // If not found, error out
+                markAsError(receiptId, 'Item not found for SKU=' + sku);
+                return;
+            }
+
+            if (!summaryByItem[itemId]) {
+                summaryByItem[itemId] = { 
+                    received: 0,
+                    good: 0, 
+                    defective: 0 
+                };
+            }
+            summaryByItem[itemId].received  += receivedQty;
+            summaryByItem[itemId].good      += goodQty;
+            summaryByItem[itemId].defective += defectiveQty;
+        }
+
+        log.debug('SummaryByItem', JSON.stringify(summaryByItem));
+
+        // 5) Check the RA so far: how much has the RA already received per item?
+        //    If new payload < already received, error out for that item.
+        var alreadyReceivedByItem = gatherAlreadyReceived(raId);
+
+        for (var itemIdKey in summaryByItem) {
+            if (!summaryByItem.hasOwnProperty(itemIdKey)) continue;
+
+            var newPayloadQty = summaryByItem[itemIdKey].received; 
+            var alreadyRecQty = alreadyReceivedByItem[itemIdKey] || 0;
+            if (newPayloadQty < alreadyRecQty) {
+                // Means we got a "smaller total" from the 3PL than we already have in NS
+                var errMsg = 'New payload for itemId=' + itemIdKey + 
+                             ' says ' + newPayloadQty + 
+                             ' but RA already has ' + alreadyRecQty + 
+                             ' received. Marking error.';
+                markAsError(receiptId, errMsg);
+                return;
+            }
+        }
+
+        // 6) Transform RA -> IR in dynamic mode
+        var irRec;
+        try {
+            irRec = record.transform({
+                fromType: record.Type.RETURN_AUTHORIZATION,
+                fromId:   raId,
+                toType:   record.Type.ITEM_RECEIPT,
+                isDynamic: true
+            });
+        } catch (transformErr) {
+            var failMsg = 'Error transforming RA ' + raId + ' to IR: ' + transformErr;
+            markAsError(receiptId, failMsg);
+            return;
+        }
+
+        // 7) Set the date, if present
+        if (receiptDate) {
+            irRec.setValue({ fieldId: 'trandate', value: receiptDate });
+        }
+
+        // 8) Zero out lines auto-created by the transform 
+        //    (so we can rebuild them line-by-line).
+        var lineCount = irRec.getLineCount({ sublistId: 'item' });
+        for (var x = lineCount - 1; x >= 0; x--) {
+            irRec.selectLine({ sublistId: 'item', line: x });
+            irRec.setCurrentSublistValue({
+                sublistId: 'item',
+                fieldId: 'itemreceive',
+                value: false
+            });
+            irRec.commitLine({ sublistId: 'item' });
+        }
+
+        // 9) Load RA in standard mode to see line-by-line capacities
+        //    We'll try to allocate item quantities to existing RA lines first.
+        var raRec = record.load({
+            type: record.Type.RETURN_AUTHORIZATION,
+            id:   raId,
+            isDynamic: false
+        });
+        var raLineCount = raRec.getLineCount({ sublistId: 'item' });
+        log.debug('RA Line Count', raLineCount);
+
+        // We’ll keep track of how many items are STILL leftover after we fill the RA lines
+        // in case the RA does not have a line for them. Then we’ll create new lines in IR for them.
+        var leftoverByItem = JSON.parse(JSON.stringify(summaryByItem));
+
+        // 10) Allocate item quantities across existing RA lines
+        for (var lineIdx = 0; lineIdx < raLineCount; lineIdx++) {
+            var raItemId    = raRec.getSublistValue({ sublistId: 'item', fieldId: 'item', line: lineIdx });
+            var qtyAuth     = parseFloat(raRec.getSublistValue({ sublistId: 'item', fieldId: 'quantity',         line: lineIdx })) || 0;
+            var qtyRecSoFar = parseFloat(raRec.getSublistValue({ sublistId: 'item', fieldId: 'quantityreceived', line: lineIdx })) || 0;
+            var capacity    = qtyAuth - qtyRecSoFar;
+
+            if (capacity <= 0) {
+                // line is fully received
+                continue;
+            }
+
+            var leftoverItemEntry = leftoverByItem[raItemId];
+            if (!leftoverItemEntry) {
+                // this RA line's item not in the new payload
+                continue;
+            }
+
+            // total leftover to receive for this item
+            var goodLeft      = leftoverItemEntry.good;
+            var defectiveLeft = leftoverItemEntry.defective;
+            var totalLeft     = goodLeft + defectiveLeft;
+            if (totalLeft <= 0) {
+                // no new needed for this item
+                continue;
+            }
+
+            // We'll allocate up to 'capacity'
+            var totalThisLine = Math.min(capacity, totalLeft);
+            
+            // portion that goes to "good"
+            var goodAlloc = 0;
+            if (goodLeft > 0) {
+                goodAlloc = Math.min(goodLeft, totalThisLine);
+            }
+            var leftoverCap = totalThisLine - goodAlloc;
+            var defectiveAlloc = 0;
+            if (leftoverCap > 0 && defectiveLeft > 0) {
+                defectiveAlloc = Math.min(defectiveLeft, leftoverCap);
+            }
+
+            // => If goodAlloc > 0, create a line referencing RA lineIdx
+            if (goodAlloc > 0) {
+                addIRLine(irRec, {
+                    orderline: (lineIdx + 1),  // link to RA line
+                    itemId:    raItemId,
+                    quantity:  goodAlloc,
+                    location:  10  // ECOM
+                });
+                leftoverItemEntry.good -= goodAlloc;
+            }
+
+            // => If defectiveAlloc > 0, create a line referencing RA lineIdx
+            if (defectiveAlloc > 0) {
+                addIRLine(irRec, {
+                    orderline: (lineIdx + 1),
+                    itemId:    raItemId,
+                    quantity:  defectiveAlloc,
+                    location:  15 // Defective
+                });
+                leftoverItemEntry.defective -= defectiveAlloc;
+            }
+        }
+
+        // 11) If there are leftover items that are not on the RA at all, 
+        //     we proceed to create lines with no `orderline`. 
+        //     This depends on your account’s preference to allow receiving 
+        //     items not on the transaction. 
+        for (var leftoverItemId in leftoverByItem) {
+            if (!leftoverByItem.hasOwnProperty(leftoverItemId)) continue;
+
+            var leftoverObj = leftoverByItem[leftoverItemId];
+            var totalLeft   = leftoverObj.good + leftoverObj.defective;
+            if (totalLeft <= 0) {
+                continue;  // no leftover
+            }
+
+            // We'll add lines for "good" and "defective" if > 0
+            if (leftoverObj.good > 0) {
+                addIRLine(irRec, {
+                    // no orderline => not referencing a specific RA line
+                    orderline: null,
+                    itemId:    leftoverItemId,
+                    quantity:  leftoverObj.good,
+                    location:  10 // ECOM
+                });
+            }
+            if (leftoverObj.defective > 0) {
+                addIRLine(irRec, {
+                    orderline: null,
+                    itemId:    leftoverItemId,
+                    quantity:  leftoverObj.defective,
+                    location:  15 // Defective
+                });
+            }
+        }
+
+        // 12) Save the Item Receipt if any lines are marked to receive
+        var finalLineCount = irRec.getLineCount({ sublistId: 'item' });
+        var linesToReceive = 0;
+        for (var l = 0; l < finalLineCount; l++) {
+            irRec.selectLine({ sublistId: 'item', line: l });
+            var isReceive = irRec.getCurrentSublistValue({
+                sublistId: 'item',
+                fieldId: 'itemreceive'
+            });
+            if (isReceive === true) {
+                linesToReceive++;
+            }
+        }
+
+        if (linesToReceive > 0) {
+            var newIrId = irRec.save();
+            log.audit('Created RMA Item Receipt', 'IR ID=' + newIrId + ', lines=' + linesToReceive);
+        } else {
+            log.debug('No lines to receive', 'No changes saved to IR');
+        }
+
+        // 13) Mark the custom record as Complete
+        record.submitFields({
+            type: 'customrecord_mg_rma_receipt',
+            id: receiptId,
+            values: {
+                custrecord_rmareceipt_scriptprocessstatu: '3', // 3 = Completed
+                custrecord_rmareceipt_scripterror: ''
+            }
+        });
+        log.debug('Marked RMA Receipt Complete', 'receiptId=' + receiptId);
+    }
+
+    /**
+     * gatherAlreadyReceived(raId):
+     * Returns an object { itemId: totalReceivedSoFarOnRA }
+     */
+    function gatherAlreadyReceived(raId) {
+        var out = {};
+        // Load the RA in standard mode
+        var raRec = record.load({
+            type: record.Type.RETURN_AUTHORIZATION,
+            id:   raId,
+            isDynamic: false
+        });
+        var count = raRec.getLineCount({ sublistId: 'item' });
+        for (var i = 0; i < count; i++) {
+            var itemId = raRec.getSublistValue({ sublistId: 'item', fieldId: 'item', line: i });
+            var received = parseFloat(
+                raRec.getSublistValue({ sublistId: 'item', fieldId: 'quantityreceived', line: i })
+            ) || 0;
+            if (!out[itemId]) {
+                out[itemId] = 0;
+            }
+            out[itemId] += received;
+        }
+        return out;
+    }
+
+    /**
+     * addIRLine:
+     * In dynamic mode, create a new line for the IR. 
+     * If "orderline" is null, we skip setting that field, which may allow 
+     * receiving an item not on the original RA, depending on your config.
+     */
+    function addIRLine(irRec, opts) {
+        irRec.selectNewLine({ sublistId: 'item' });
+
+        // If we have a valid orderline, link it
+        if (opts.orderline) {
+            irRec.setCurrentSublistValue({
+                sublistId: 'item',
+                fieldId: 'orderline',
+                value: opts.orderline
+            });
+        }
+
+        irRec.setCurrentSublistValue({
+            sublistId: 'item',
+            fieldId: 'itemreceive',
+            value: true
+        });
+        irRec.setCurrentSublistValue({
+            sublistId: 'item',
+            fieldId: 'item',
+            value: opts.itemId
+        });
+        irRec.setCurrentSublistValue({
+            sublistId: 'item',
+            fieldId: 'quantity',
+            value: opts.quantity
+        });
+        irRec.setCurrentSublistValue({
+            sublistId: 'item',
+            fieldId: 'location',
+            value: opts.location
+        });
+
+        irRec.commitLine({ sublistId: 'item' });
+
+        log.debug('addIRLine', 'Added item=' + opts.itemId + ', qty=' + opts.quantity + 
+                  ', loc=' + opts.location + ', orderline=' + opts.orderline);
+    }
+
+    /**
+     * findItemBySKU:
+     * Return the NetSuite item internal ID for a given custom SKU field.
+     * Adjust if needed for matrix, etc.
+     */
+    function findItemBySKU(sku) {
+        if (!sku) return null;
+        var itemSearchObj = search.create({
+            type: search.Type.ITEM,
+            filters: [
+                ['custitem_mg_sku','is', sku],
+                'AND',
+                ['matrix','is','F']
+            ],
+            columns: ['internalid']
+        });
+        var rs = itemSearchObj.run().getRange({ start: 0, end: 1 });
+        if (rs && rs.length > 0) {
+            return rs[0].getValue({ name: 'internalid' });
+        }
+        return null;
+    }
+
+    /**
+     * markAsError:
+     * Helper to mark custom record as Error
+     */
+    function markAsError(receiptId, msg) {
+
+      const truncatedMsg = msg.length > 300 ? msg.substring(0, 300) : msg;
+        record.submitFields({
+            type: 'customrecord_mg_rma_receipt',
+            id: receiptId,
+            values: {
+                custrecord_rmareceipt_scriptprocessstatu: '4', // 4 = Error
+                custrecord_rmareceipt_scripterror: truncatedMsg
+            }
+        });
+        log.error('RMA Receipt Error ' + receiptId, msg);
+    }
+
+    return {
+        execute: execute
+    };
+});
