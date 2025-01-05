@@ -8,9 +8,6 @@ define([
     'N/log'
 ], function(record, search, log) {
 
-    // Optional: For testing only, limit to a specific custom record
-    var TEST_ID = 3650;
-
     function execute(context) {
         try {
             log.audit('RMA Receipt Script', 'Begin execution');
@@ -21,9 +18,7 @@ define([
                 filters: [
                     ['custrecord_rmareceipt_scriptprocessstatu', 'anyof', '@NONE@'],
                     'AND',
-                    ['custrecord_rmareceipt_rma', 'noneof', '@NONE@'],
-                    'AND',
-                    ['internalid','anyof', TEST_ID] // For local testing only
+                    ['custrecord_rmareceipt_rma', 'noneof', '@NONE@']
                 ],
                 columns: [ search.createColumn({ name: 'internalid' }) ]
             });
@@ -279,6 +274,11 @@ define([
                     sublistId: 'item',
                     fieldId: 'quantity',
                     value: toReceiveNow
+                });
+              irRec.setCurrentSublistValue({
+                    sublistId: 'item',
+                    fieldId: 'restock',
+                    value: true
                 });
                 // If overriding location for all lines
                 if (locId) {
