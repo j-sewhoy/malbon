@@ -536,10 +536,11 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           sublistId: 'item',
           fieldId: 'itemname'
         }) || '';
-        let lineClass = pareseInt(ifRec.getCurrentSublistValue({
+        let lineClass = parseInt(ifRec.getCurrentSublistValue({
           sublistId: 'item',
           fieldId: 'class'
         })) || 0;
+        log.debug('lineClass', lineClass)        
         log.debug('itemName', itemName)
 
         lines.push({
