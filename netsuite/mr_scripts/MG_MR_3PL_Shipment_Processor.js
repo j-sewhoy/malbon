@@ -204,7 +204,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       }
 
       const createdFromId = ifRec.getValue({ fieldId: 'createdfrom' });
-      log.debug('createdFromId',createdFromId);
+      log.debug('createdFromId', createdFromId);
       if (!createdFromId) {
         let errNote = 'No Created-From record on IF. Cannot proceed.';
         log.error('reduce - Missing CreatedFrom', errNote);
@@ -213,22 +213,15 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
       }
 
       /************************************************
-      * 5) Load SO, update short-ship fields
+      * 5) Get IF Lines
       ************************************************/
 
-      let createdFromRec = loadCreatedFromRecord(createdFromId);
-      if (!createdFromRec) {
-        // If neither Sales Order nor Transfer Order, skip short-ship logic
-        log.debug('reduce', 'Created-From record is neither SalesOrd nor TransferOrd. Skipping short-ship updates.');
-        // Mark processed, done
-        setShipmentStatus(shipmentId, 3);
-        return;
-      }
-
-      const createdFromType = createdFromRec.type; // store property from loadCreatedFromRecord
 
       let ifLines = gatherIFLines(ifRec);
       log.debug('reduce - Gathered IF Lines', JSON.stringify(ifLines));
+
+      let line0Class = (ifLines[0] && ifLines[0].lineClass) || 0;
+      log.debug('line0Class',line0Class);
 
       /************************************************
        * 3) Allocate IF lines & handle short-ship array
@@ -328,29 +321,27 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
         value: maxLabelCost
       });
 
-      if (createdFromType === record.Type.SALES_ORDER) {
 
-        let soClassVal = createdFromRec.getValue({ fieldId: 'class' });
-        let ifShipmethod = ifRec.getValue({ fieldId: 'shipmethod' });
-        let thirdPartyAcct = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_account' }) || '';
-        let thirdPartyCarrier = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_carrier' }) || '';
+      let ifShipmethod = ifRec.getValue({ fieldId: 'shipmethod' });
+      let thirdPartyAcct = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_account' }) || '';
+      let thirdPartyCarrier = ifRec.getValue({ fieldId: 'custbody_mg_thirdpartyship_carrier' }) || '';
 
-        if (soClassVal == 2 // wholesale
-          && ifShipmethod
-          && !EXCLUDED_SHIPMETHODS.includes(parseInt(ifShipmethod, 10))
-          && thirdPartyAcct.trim() !== ''
-          && thirdPartyCarrier.trim() !== ''
-        ) {
-          log.debug('Set IF shippingcost to maxLabelCost', maxLabelCost);
+      if (line0Class == 2 // wholesale
+        && ifShipmethod
+        && !EXCLUDED_SHIPMETHODS.includes(parseInt(ifShipmethod, 10))
+        && thirdPartyAcct.trim() !== ''
+        && thirdPartyCarrier.trim() !== ''
+      ) {
+        log.debug('Set IF shippingcost to maxLabelCost', maxLabelCost);
 
-          ifRec.setValue({
-            fieldId: 'shippingcost',
-            value: maxLabelCost
-          });
+        ifRec.setValue({
+          fieldId: 'shippingcost',
+          value: maxLabelCost
+        });
 
 
-        }
       }
+
 
 
 
@@ -376,34 +367,27 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
 
 
       /************************************************
-       * * 4) Apply short-ship logic for BOTH SalesOrd + TransferOrd
+       * * 4) Apply short-ship logic
        *************************************************/
 
-      if (anyShortShip && (createdFromType === record.Type.SALES_ORDER ||
-        createdFromType === record.Type.TRANSFER_ORDER)) {
-if(createdFromType === record.Type.SALES_ORDER) {
-  let createdFromRec = record.load({
-        type: record.Type.SALES_ORDER,
-        id: createdFromId,
-        isDynamic: true
-      });
-    } 
-    if(createdFromType === record.Type.TRANSFER_ORDER) {
-  let createdFromRec = record.load({
-        type: record.Type.TRANSFER_ORDER,
-        id: createdFromId,
-        isDynamic: true
-      });
-    } 
-    
+      if (anyShortShip) {
 
-        
+        let createdFromRec = loadCreatedFromRecord(createdFromId);
+        if (!createdFromRec) {
+          // If neither Sales Order nor Transfer Order, skip short-ship logic
+          log.debug('reduce', 'Created-From record is neither SalesOrd nor TransferOrd. Skipping short-ship updates.');
+          // Mark processed, done
+          setShipmentStatus(shipmentId, 3);
+          return;
+        }
+
+        const createdFromType = createdFromRec.type; // store property from loadCreatedFromRecord
+
         // For each shortShip, find the SO line by orderLine
         shortShips.forEach(s => {
           log.debug('Shortship line on CreatedFrom record, orderLine:', s.orderLine);
 
           createdFromRec.selectLine({ sublistId: 'item', line: s.orderLine - 1 });
-
 
           // increment custcol_mg_shortship_quantity
           let existingShort = parseFloat(
@@ -441,32 +425,32 @@ if(createdFromType === record.Type.SALES_ORDER) {
             fieldId: 'custcol_mg_shortship_details',
             value: JSON.stringify(detailsObj)
           });
-          log.debug('SO custcol_mg_shortship_details to set', JSON.stringify(detailsObj));
+          log.debug('createdFrom custcol_mg_shortship_details to set', JSON.stringify(detailsObj));
 
           createdFromRec.commitLine({ sublistId: 'item' });
         });
 
-        if (anyShortShip) {
-          createdFromRec.setValue({
-            fieldId: 'custbody_mg_fulfillmenthold',
-            value: 4
-          });
-          log.debug('SO custbody_mg_fulfillmenthold set to', '4');
+
+        createdFromRec.setValue({
+          fieldId: 'custbody_mg_fulfillmenthold',
+          value: 4
+        });
+
+
+        // Save the CreatedFrom Rec
+        try {
+          let createdFromSaveId = createdFromRec.save();
+          log.audit('reduce - CreatedFrom Saved', '${createdFromType} ID: ${createdFromSaveId}, Shipment: ${shipmentId}');
+        } catch (e) {
+          let errNote = `Failed to save CreatedFrom (ID ${createdFromId}). Error: ${e.message}`;
+          log.error('reduce - CreatedFrom Save Error', errNote);
+          setShipmentStatus(shipmentId, 4, errNote);
+          return;
         }
-      } else {
-        log.debug('reduce', `CreatedFrom type ${createdFromType} is not recognized for short-ship logic? Skipping.`);
+
       }
 
-      // Save the CreatedFrom Rec
-      try {
-        let createdFromSaveId = createdFromRec.save();
-        log.audit('reduce - CreatedFrom Saved', '${createdFromType} ID: ${createdFromSaveId}, Shipment: ${shipmentId}');
-      } catch (e) {
-        let errNote = `Failed to save CreatedFrom (ID ${createdFromId}). Error: ${e.message}`;
-        log.error('reduce - CreatedFrom Save Error', errNote);
-        setShipmentStatus(shipmentId, 4, errNote);
-        return;
-      }
+
 
 
 
@@ -552,6 +536,10 @@ if(createdFromType === record.Type.SALES_ORDER) {
           sublistId: 'item',
           fieldId: 'itemname'
         }) || '';
+        let lineClass = pareseInt(ifRec.getCurrentSublistValue({
+          sublistId: 'item',
+          fieldId: 'class'
+        })) || 0;
         log.debug('itemName', itemName)
 
         lines.push({
@@ -562,7 +550,8 @@ if(createdFromType === record.Type.SALES_ORDER) {
           origQty: origQty,
           orderLine: orderLine,
           usedQty: 0,
-          itemReceive: false
+          itemReceive: false,
+          lineClass: lineClass
         });
       }
       // sort by ascending line ID
@@ -666,10 +655,10 @@ if(createdFromType === record.Type.SALES_ORDER) {
         id: tranId,
         isDynamic: true
       });
-      log.debug('loadCreatedFromRecord-soRec',soRec);
+      log.debug('loadCreatedFromRecord-soRec', soRec);
       if (soRec) {
         //soRec.type = record.Type.SALES_ORDER;
-        log.debug('loadCreatedFromRecord-soRec-type',soRec.type);
+        log.debug('loadCreatedFromRecord-soRec-type', soRec.type);
         return soRec;
       }
     } catch (e) {
