@@ -309,11 +309,6 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
           fieldId: 'custbody_mg_if_shortshipped_items',
           value: JSON.stringify(shortShipPayload)
         });
-      } else {
-        ifRec.setValue({
-          fieldId: 'custbody_mg_if_shortshipped_items',
-          value: '[]'
-        });
       }
 
       ifRec.setValue({
@@ -385,7 +380,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
 
         // For each shortShip, find the SO line by orderLine
         shortShips.forEach(s => {
-          log.debug('Shortship line on CreatedFrom record, orderLine:', s.orderLine);
+          log.audit('Shortship line on CreatedFrom record, orderLine:', s.orderLine);
 
           createdFromRec.selectLine({ sublistId: 'item', line: s.orderLine - 1 });
 
@@ -425,7 +420,7 @@ define(['N/record', 'N/search', 'N/log'], (record, search, log) => {
             fieldId: 'custcol_mg_shortship_details',
             value: JSON.stringify(detailsObj)
           });
-          log.debug('createdFrom custcol_mg_shortship_details to set', JSON.stringify(detailsObj));
+          log.audit('createdFrom custcol_mg_shortship_details to set', JSON.stringify(detailsObj));
 
           createdFromRec.commitLine({ sublistId: 'item' });
         });
