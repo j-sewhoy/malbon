@@ -199,6 +199,7 @@
             "sizesort": line.custcol_mg_sizesort!9999,
             "quantity": line.quantity,
             "amount": line.amount,
+          "netamount": line.netamount,
             "rate": line.rate,
             "discountRate": "0.00"
         } />
@@ -413,8 +414,12 @@
     <#assign totalNetAmount = 0 />
     <#list items as it>
         <#if it.itemtype != "subtotal">
+           <#assign netStr = it.netamount?replace("(", "")?replace(")", "")?replace(",", "")?replace("$","")?trim!"" />
+             <#if netStr?length gt 0>
+            <#assign lineNet = netStr?number />
+            <#assign totalNetAmount += lineNet />
+        </#if>
 
-            <#assign totalNetAmount += it.amount?replace(",", "")?replace("$", "")?number!("0") />
         </#if>
     </#list>
     <!-- Format it nicely with commas and a $ sign -->
