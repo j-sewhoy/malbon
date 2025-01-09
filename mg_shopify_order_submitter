@@ -26,6 +26,13 @@ function(record, search, serverWidget, https) {
             });
             storeSelect.isMandatory = true;
 
+           // 3a. Add a blank option as the default
+            storeSelect.addSelectOption({
+                value: '',
+                text: '-- Select Store --'
+            });
+
+
             // 4. Populate dropdown from custom record
             var storeSearch = search.create({
                 type: 'customrecord_mg_shopify_stores', 
@@ -81,9 +88,17 @@ function(record, search, serverWidget, https) {
                 type: serverWidget.FieldType.INLINEHTML,
                 label: 'Result'
             });
-
-            resultField.defaultValue = '<p><b>Status:</b> ' + response.code + '</p>'
-                                     + '<pre>' + response.body + '</pre>';
+          
+ if (response.code == 204) {
+                // Custom success message
+                resultField.defaultValue = '<p style="color: green;"><b>Submission successful.</b> ' +
+                    'Your order <b>' + shopifyOrderId + '</b> for <b>' + shopifyStoreUrl +
+                    '</b> should be imported into NetSuite momentarily.</p>';
+            } else {
+                // Show raw status/code and body
+                resultField.defaultValue = '<p><b>Status:</b> ' + response.code + '</p>' +
+                    '<pre>' + response.body + '</pre>';
+            }
 
             context.response.writePage(resultForm);
         }
