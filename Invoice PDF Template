@@ -71,12 +71,7 @@
                         <span class="nameandaddress"><b>Invoice Date:</b> ${record.trandate}</span>
                     </td>
                     <td style="width: 30%"></td>
-                    <td style="text-align: left;">
-<span>
-    <b>Tracking:</b> 
-    <#assign formattedTracking = record.linkedtrackingnumbers?replace(" ", "<br/>", "r") />
-    ${formattedTracking}
-</span>                    </td>
+                    <td style="text-align: left;"></td>
                 </tr>
                 <tr>
                     <td style="width: 30%;"><b>Due Date:</b> ${record.duedate}</td>
@@ -495,48 +490,69 @@
 
     <hr />
 
-    <!-- Totals -->
-    <table class="total" style="width: 100%;">
-        <tr class="totalrow">
-            <td background-color="#ffffff" width="60%"></td>
-            <td align="right" width="20%"><b>Total Quantity</b></td>
-            <td align="right" width="20%">${totalPOQuantity?string("#,##0")}</td>
-        </tr>
-        <tr class="totalrow">
-            <td background-color="#ffffff" width="60%"></td>
-            <td align="right" width="20%"><b>Subtotal</b></td>
-            <td align="right" width="20%">${record.subtotal?string("$#,##0.00")}</td>
-        </tr>
-        <tr class="totalrow">
-            <td background-color="#ffffff" width="60%"></td>
-            <td align="right" width="20%"><b>Tax Total</b></td>
-            <td align="right" width="20%">${record.taxtotal?string("$#,##0.00")}</td>
-        </tr>
-        <tr class="totalrow">
-            <td background-color="#ffffff" width="60%"></td>
-            <td align="right" width="20%"><b>Shipping Cost</b></td>
-            <td align="right" width="20%">
-                <#if record.altshippingcost == "">
-                    $0.00
-                <#else>
-                    ${record.altshippingcost}%
-                </#if>
+
+
+    <!-- 3) BIG WRAPPER TABLE: Left for Tracking, Right for Totals -->
+    <table style="width:100%; border-collapse: collapse;">
+        <tr>
+            <!-- LEFT side: multi-line or repeated Tracking Numbers -->
+<td style="width:40%; vertical-align: top;">
+    <#-- Safely split trackingnumbers (handle if it's null or empty) -->
+    <#assign trackingList = (record.linkedtrackingnumbers?trim!"" )?split(" ") />
+    <#if trackingList?size gt 0>
+        <b>Tracking Numbers:</b><br/>
+        <#list trackingList as t>
+            ${t}<br/>
+        </#list>
+    </#if>
+</td>
+
+            <!-- RIGHT side: Totals Table -->
+            <td style="width:60%; vertical-align: top;">
+                <table class="total" style="width: 100%;">
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Total Quantity</b></td>
+                        <td align="right">${totalPOQuantity?string("#,##0")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Subtotal</b></td>
+                        <td align="right">${record.subtotal?string("$#,##0.00")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Tax Total</b></td>
+                        <td align="right">${record.taxtotal?string("$#,##0.00")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Shipping Cost</b></td>
+                        <td align="right">
+                            <#if record.altshippingcost == "">
+                                $0.00
+                            <#else>
+                                ${record.altshippingcost}%
+                            </#if>
+                        </td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Total Value</b></td>
+                        <td align="right">${record.total?string("$#,##0.00")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Amount Paid</b></td>
+                        <td align="right">${record.amountpaid}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Amount Due</b></td>
+                        <td align="right">${record.amountremaining}</td>
+                    </tr>
+                </table>
             </td>
-        </tr>
-        <tr class="totalrow">
-            <td background-color="#ffffff" width="60%"></td>
-            <td align="right" width="20%"><b>Total Value</b></td>
-            <td align="right" width="20%">${record.total?string("$#,##0.00")}</td>
-        </tr>
-        <tr class="totalrow">
-            <td background-color="#ffffff" width="60%"></td>
-            <td align="right" width="20%"><b>Amount Paid</b></td>
-            <td align="right" width="20%">${record.amountpaid}</td>
-        </tr>
-        <tr class="totalrow">
-            <td background-color="#ffffff"  width="60%"></td>
-            <td align="right" width="20%"><b>Amount Due</b></td>
-            <td align="right" width="20%">${record.amountremaining}</td>
         </tr>
     </table>
 
