@@ -1,0 +1,477 @@
+<?xml version="1.0"?>
+<!DOCTYPE pdf PUBLIC "-//big.faceless.org//report" "report-1.1.dtd">
+<pdf>
+<head>
+    <link name="NotoSans" type="font" subtype="truetype" src="${nsfont.NotoSans_Regular}"
+          src-bold="${nsfont.NotoSans_Bold}"
+          src-italic="${nsfont.NotoSans_Italic}"
+          src-bolditalic="${nsfont.NotoSans_BoldItalic}" bytes="2" />
+    <#if .locale == "zh_CN">
+        <link name="NotoSansCJKsc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKsc_Regular}"
+              src-bold="${nsfont.NotoSansCJKsc_Bold}" bytes="2" />
+    <#elseif .locale == "zh_TW">
+        <link name="NotoSansCJKtc" type="font" subtype="opentype" src="${nsfont.NotoSansCJKtc_Regular}"
+              src-bold="${nsfont.NotoSansCJKtc_Bold}" bytes="2" />
+    <#elseif .locale == "ja_JP">
+        <link name="NotoSansCJKjp" type="font" subtype="opentype" src="${nsfont.NotoSansCJKjp_Regular}"
+              src-bold="${nsfont.NotoSansCJKjp_Bold}" bytes="2" />
+    <#elseif .locale == "ko_KR">
+        <link name="NotoSansCJKkr" type="font" subtype="opentype" src="${nsfont.NotoSansCJKkr_Regular}"
+              src-bold="${nsfont.NotoSansCJKkr_Bold}" bytes="2" />
+    <#elseif .locale == "th_TH">
+        <link name="NotoSansThai" type="font" subtype="opentype" src="${nsfont.NotoSansThai_Regular}"
+              src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
+    </#if>
+
+<macrolist>
+    <macro id="nlheader">
+        <table class="header" style="width: 100%; font-size: 8pt; vertical-align: top;">
+            <!-- First Line: Logo and Title -->
+            <tr>
+                <td style="width: 30%">
+                    <#if companyInformation.logoUrl?length != 0>
+                        <@filecabinet nstype="image"
+                                      style="float: left; height: 22px; width: 99px; vertical-align:top;"
+                                      src="${companyInformation.logoUrl}" />
+                    </#if>
+                </td>
+                <td style="width: 30%"></td>
+                <td style="width: 40%; text-align: center;">
+                    <span class="title">${record@title}</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 30%;">
+                    <span class="nameandaddress"><b>Order#:</b> ${record.tranid}</span>
+                </td>
+                <td style="width: 30%"></td>
+                <td style="text-align: left;">
+                    <span><b>Customer:</b> ${record.entity}</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 30%;">
+                    <span class="nameandaddress"><b>PO #:</b> ${record.otherrefnum}</span>
+                </td>
+                <td style="width: 30%"></td>
+                <td style="text-align: left;"><b>Order Type:</b> ${record.custbody_mg_order_type}</td>
+            </tr>
+            <tr>
+                <td style="width: 30%;">
+                    <span class="nameandaddress"><b>Order Date:</b> ${record.trandate}</span>
+                </td>
+                <td style="width: 30%"></td>
+                <td style="text-align: left;">
+                    <span><b>Payment Terms:</b> ${record.terms}</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 30%;">
+                    <span class="nameandaddress"><b>Start Date:</b> ${record.startdate}</span>
+                </td>
+                <td style="width: 30%"></td>
+                <td style="text-align: left;">
+                    <span><b>Shipping Method:</b> ${record.shipmethod}</span>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 30%;"><b>Cancel Date:</b> ${record.enddate}</td>
+                <td style="width: 30%"></td>
+                <td style="text-align: left;">
+                    <span>
+                        <#if record.custbody_mg_thirdpartyship_carrier?? && record.custbody_mg_thirdpartyship_carrier != ''>
+                            <b>3rd Party Carrier:</b> ${record.custbody_mg_thirdpartyship_carrier}
+                        </#if>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 30%;">
+                </td>
+                <td style="width: 30%"></td>
+                <td style="text-align: left;">
+                    <span>
+                        <#if record.custbody_mg_thirdpartyship_account?? && record.custbody_mg_thirdpartyship_account != ''>
+                            <b>3rd Party Account #:</b> ${record.custbody_mg_thirdpartyship_account}
+                        </#if>
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <td style="width: 30%;">
+                </td>
+                <td style="width: 30%"></td>
+                <td style="text-align: left;">
+                    <span><b>Page:</b> <pagenumber/> of <totalpages/></span>
+                </td>
+            </tr>
+        </table>
+    </macro>
+</macrolist>
+
+<style>
+    /* Basic styling, adjust as needed */
+    * {
+        font-family: NotoSans, sans-serif;
+    }
+    table {
+        font-size: 8pt;
+        table-layout: fixed;
+    }
+    th {
+        font-weight: bold;
+        font-size: 8pt;
+        vertical-align: middle;
+        padding: 5px 6px 3px 0px;
+        background-color: #e3e3e3;
+        color: #333333;
+    }
+    td {
+        padding: 4px 0px;
+    }
+    table.header td {
+        font-size: 8pt;
+        line-height: 1.2;
+    }
+    table.itemtable th {
+        padding-bottom: 3px;
+        padding-top: 3px;
+    }
+    table.total {
+        page-break-inside: avoid;
+    }
+    tr.totalrow {
+        background-color: #e3e3e3;
+        line-height: 200%;
+    }
+    span.title {
+        font-size: 22pt;
+        line-height: 100%;
+        padding: 0px;
+        margin: 0px;
+    }
+    hr {
+        width: 100%;
+        color: #d3d3d3;
+        background-color: #d3d3d3;
+        height: 1px;
+    }
+</style>
+</head>
+
+<body header="nlheader" header-height="13%" footer="nlfooter" footer-height="20pt" 
+      padding="0.75in" size="Letter">
+
+    <table class="addresstable" style="width: 100%; padding-top: 5px; padding-bottom: 5px;">
+        <tr style="line-height:120%">
+            <td class="addressheader" width="30%">
+                <b>${record.billaddress@label?upper_case}</b>
+            </td>
+            <td class="addressheader" width="30%"></td>
+            <td class="addressheader" width="40%">
+                <b>${record.shipaddress@label?upper_case}</b>
+            </td>
+        </tr>
+        <tr style="line-height:120%">
+            <td class="address" width="30%">
+                ${record.billaddress}
+            </td>
+            <td class="address" width="30%"> </td>
+            <td class="address" width="40%">
+                ${record.shipaddress}
+            </td>
+        </tr>
+    </table>
+
+<#-- If there's no line items, nothing to render -->
+<#if record.item?has_content>
+
+    <!-- 1) Build merged lines, grouping and removing discount lines -->
+    <#assign allMergedLines = [] />
+    <#assign currentGroup = [] />
+
+    <#list 0..(record.item?size - 1) as i>
+        <#assign line = record.item[i] />
+        <#assign itemType = line.itemtype?lower_case?trim />
+        <#assign itemInternalId = line.item.id!"" />
+
+        <#-- Normal line map with default discount=0.00 -->
+        <#assign lineMap = {
+            "itemtype": itemType,
+            "internalid": itemInternalId,
+            "custcol_mg_parentstyle": line.custcol_mg_parentstyle,
+            "color": line.custcol_mg_color,
+            "size": line.custcol_mg_size,
+            "sizesort": line.custcol_mg_sizesort!9999,
+            "quantity": line.quantity,
+            "amount": line.amount,
+            "rate": line.rate,
+            "discountRate": "0.00"
+        } />
+
+        <#-- Check if this is a discount line by itemtype or internalid -->
+        <#if itemType == "discount" || itemInternalId == "114011">
+            <#-- Parse discount% from line.rate if e.g. "15%" -->
+            <#assign discountPct = "0.00" />
+            <#if line.rate?contains("%")>
+                <#assign discountPct = line.rate?replace("%","")?trim?number!("0.00") />
+            <#elseif line.amount?number!0 != 0>
+                <!-- If discount is stored differently, adapt here -->
+                <#assign discountPct = "0.00" />
+            </#if>
+
+            <!-- If we have a group, apply discount to either entire group if last line is a subtotal,
+                 or just the single previous line if not. -->
+            <#if (currentGroup?size > 0)>
+                <#assign lastLine = currentGroup[currentGroup?size - 1] />
+
+                <#if lastLine.itemtype == "subtotal">
+                    <!-- Apply discount to entire group. We must rebuild the group list -->
+                    <#assign idx = 0 />
+                    <#assign newList = [] />
+                    <#list currentGroup as cgLineMap>
+                        <#-- skip discount lines or subtotals if you only want to discount normal lines -->
+                        <#assign updatedMap = cgLineMap />
+                        <#if cgLineMap.itemtype != "discount" && cgLineMap.itemtype != "subtotal">
+                            <#assign updatedMap = cgLineMap + {
+                                "discountRate": discountPct?string("0.00")
+                            } />
+                        </#if>
+                        <#assign newList = newList + [ updatedMap ] />
+                        <#assign idx = idx + 1 />
+                    </#list>
+                    <#assign currentGroup = newList />
+
+                <#else>
+                    <!-- Apply discount only to the single last item in currentGroup -->
+                    <#assign idx = currentGroup?size - 1 />
+                    <#assign updatedMap = lastLine + {
+                        "discountRate": discountPct?string("0.00")
+                    } />
+
+                    <!-- rebuild currentGroup by replacing index idx -->
+                    <#assign newList = [] />
+                    <#assign j = 0 />
+                    <#list currentGroup as cgLineMap>
+                        <#if j == idx>
+                            <#assign newList = newList + [ updatedMap ] />
+                        <#else>
+                            <#assign newList = newList + [ cgLineMap ] />
+                        </#if>
+                        <#assign j = j + 1 />
+                    </#list>
+                    <#assign currentGroup = newList />
+                </#if>
+            </#if>
+            <!-- Do NOT add this discount line (lineMap) to currentGroup, so it's hidden -->
+        <#elseif itemType == "subtotal">
+            <!-- End of group. Optionally add the subtotal line if you want to show it. -->
+            <#assign currentGroup = currentGroup + [ lineMap ] />
+            <#-- Push the entire group to allMergedLines and reset. -->
+            <#assign allMergedLines = allMergedLines + [ currentGroup ] />
+            <#assign currentGroup = [] />
+        <#else>
+            <!-- Normal line, just add to the group. -->
+            <#assign currentGroup = currentGroup + [ lineMap ] />
+        </#if>
+    </#list>
+
+    <!-- If there's leftover lines that didn't end with a subtotal, push them as their own group. -->
+    <#if (currentGroup?size > 0)>
+        <#assign allMergedLines = allMergedLines + [ currentGroup ] />
+    </#if>
+
+    <#-- 2) Now we have allMergedLines (array of groups). Render them. -->
+    <#assign totalPOQuantity = 0 />
+
+    <#list allMergedLines as group>
+        <!-- Build composite keys from lines in this group -->
+        <#assign uniqueGroups = [] />
+        <#list group as gLine>
+            <#assign cleanRate = (gLine.rate?string("0.00"))?replace(",", "")?replace("$", "") />
+            <#assign compositeKey = gLine.custcol_mg_parentstyle + "|"
+                + cleanRate + "|"
+                + gLine.color + "|"
+                + gLine.discountRate
+            />
+            <#if !(uniqueGroups?seq_contains(compositeKey))>
+                <#assign uniqueGroups = uniqueGroups + [compositeKey] />
+            </#if>
+        </#list>
+
+        <!-- For each composite key, filter from the group (not record.item) -->
+        <#list uniqueGroups as groupKey>
+            <#assign groupParts = groupKey?split("|") />
+            <#assign parentStyle        = groupParts[0] />
+            <#assign rateString         = groupParts[1] />
+            <#assign colorGroup         = groupParts[2] />
+            <#assign discountRateString = groupParts[3] />
+
+            <#assign rateNum           = rateString?number!("0.00") />
+            <#assign discountRateNum   = discountRateString?number!("0.00") />
+
+            <#assign items = group?filter(it ->
+                (
+                    it.custcol_mg_parentstyle + "|"
+                    + (it.rate?string("0.00")?replace(",", "")?replace("$", ""))
+                    + "|"
+                    + it.color + "|"
+                    + it.discountRate
+                ) == groupKey
+            ) />
+
+            <!-- Gather unique sizes for chunking. -->
+            <#assign uniqueSizes = [] />
+            <#list items as it>
+                <#if it.itemtype != "subtotal">
+                    <#if !(uniqueSizes?seq_contains(it.size))>
+                        <#assign uniqueSizes = uniqueSizes + [{
+                            "size": it.size,
+                            "sort": it.sizesort
+                        }] />
+                    </#if>
+                </#if>
+            </#list>
+
+            <#assign sortedSizes = uniqueSizes?sort_by("sort") />
+            <#assign paddingSize = 10 - (sortedSizes?size % 10) />
+            <#assign padding     = [] />
+            <#list 1..paddingSize as i>
+                <#assign padding = padding + [{ "size": "", "sort": 9999 }] />
+            </#list>
+            <#assign paddedSizes  = sortedSizes + padding />
+            <#assign chunkedSizes = paddedSizes?chunk(10) />
+
+
+            <!-- Render each chunk of sizes -->
+            <#list chunkedSizes as sizeChunk>
+                <table class="itemtable"
+                       style="width: 100%; border-collapse: collapse; text-align: center; 
+                              margin-bottom: 10px; font-size: 7pt;">
+                    <thead>
+                        <tr>
+                            <th style="text-align: left; width: 18%; font-size: 7pt;">Style Number</th>
+                            <#list sizeChunk as sizeObj>
+                                <th style="text-align: center; width: 5.5%; font-size: 7pt;">
+                                    ${sizeObj.size}
+                                </th>
+                            </#list>
+                            <th style="text-align: center; width: 9%; font-size: 7pt;">Quantity</th>
+                            <th style="text-align: center; width: 9%; font-size: 7pt;">Unit Price</th>
+                            <!-- Discount% column -->
+                            <th style="text-align: center; width: 9%; font-size: 7pt;">Disc %</th>
+                            <th style="text-align: right; width: 9%; font-size: 7pt;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <!-- Style + Color -->
+                            <td style="text-align: left;">
+                                ${parentStyle}
+                                <#if colorGroup?length?trim != "">
+                                    <br />(${colorGroup})
+                                </#if>
+                            </td>
+
+                            <!-- Per-size quantity -->
+                            <#list sizeChunk as sizeObj>
+                                <td style="text-align: center;">
+                                    <#if sizeObj.size != "">
+                                        <#assign sizeQuantity = 0 />
+                                        <#list items as it>
+                                            <#if it.size == sizeObj.size>
+                                                <#assign sizeQuantity += it.quantity?replace(",", "")?replace("$", "")?number!("0") />
+                                            </#if>
+                                        </#list>
+                                        ${sizeQuantity}
+                                    </#if>
+                                </td>
+                            </#list>
+
+                            <!-- Total Quantity -->
+                            <td style="text-align: center;">
+                                <#assign totalQuantity = 0 />
+                                <#list items as it>
+                                    <#if it.itemtype != "subtotal">
+                                        <#assign totalQuantity += it.quantity?replace(",", "")?replace("$", "")?number!("0") />
+                                        <#assign totalPOQuantity += it.quantity?replace(",", "")?replace("$", "")?number!("0") />
+                                    </#if>
+                                </#list>
+                                ${totalQuantity?string("#,##0")}
+                            </td>
+
+                            <!-- Unit Cost -->
+                            <td style="text-align: center;">
+                                ${rateNum?string("#,##0.00")}
+                            </td>
+
+                            <!-- Discount% -->
+                            <td style="text-align: center;">
+                                <#if discountRateNum?string("0.00") == "0.00">
+                                    0.00%
+                                <#else>
+                                    ${discountRateNum?string("0.00")}%
+                                </#if>
+                            </td>
+
+                            <!-- Total (net) -->
+                            <td style="text-align: right;">
+                                <#assign totalAmount = 0 />
+                                <#list items as it>
+                                    <#if it.itemtype != "subtotal">
+                                        <#assign totalAmount += it.amount?replace(",", "")?replace("$", "")?number!("0") />
+                                    </#if>
+                                </#list>
+                                ${totalAmount?string("#,##0.00")}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </#list>
+        </#list>
+    </#list>
+
+    <!-- Expenses if any -->
+    <#if record.expense?has_content>
+        <table class="itemtable" style="width: 100%;">
+            <#list record.expense as expense>
+                <#if expense_index == 0>
+                    <thead>
+                        <tr>
+                            <th colspan="12">${expense.category@label}</th>
+                            <th colspan="10">${expense.account@label}</th>
+                            <th align="right" colspan="4">${expense.amount@label}</th>
+                        </tr>
+                    </thead>
+                </#if>
+                <tr>
+                    <td colspan="12">${expense.category}</td>
+                    <td colspan="10">
+                        <span class="itemname">${expense.account}</span>
+                    </td>
+                    <td align="right" colspan="4">
+                        ${expense.amount}
+                    </td>
+                </tr>
+            </#list>
+        </table>
+    </#if>
+
+    <hr />
+
+    <!-- Totals -->
+    <table class="total" style="width: 100%;">
+        <tr class="totalrow">
+            <td background-color="#ffffff" colspan="4"></td>
+            <td align="right"><b>Total Quantity</b></td>
+            <td align="right">${totalPOQuantity?string("#,##0")}</td>
+        </tr>
+        <tr class="totalrow">
+            <td background-color="#ffffff" colspan="4"></td>
+            <td align="right"><b>Total Value</b></td>
+            <td align="right">${record.total?string("#,##0.00")}</td>
+        </tr>
+    </table>
+</#if>
+</body>
+</pdf>
