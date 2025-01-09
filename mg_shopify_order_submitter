@@ -1,0 +1,95 @@
+/**
+ * @NApiVersion 2.x
+ * @NScriptType Suitelet
+ */
+define(['N/record', 'N/search', 'N/ui/serverWidget', 'N/https'], 
+function(record, search, serverWidget, https) {
+
+    function onRequest(context) {
+        if (context.request.method === 'GET') {
+            // 1. Create a form
+            var form = serverWidget.createForm({ title: 'Submit Shopify Order' });
+
+            // 2. Add text field for Shopify Order ID
+            var orderIdField = form.addField({
+                id: 'custpage_shopify_order_id',
+                type: serverWidget.FieldType.TEXT,
+                label: 'Shopify Order ID'
+            });
+            orderIdField.isMandatory = true; 
+            
+            // 3. Add a dropdown for Shopify Store
+            var storeSelect = form.addField({
+                id: 'custpage_shopify_store_select',
+                type: serverWidget.FieldType.SELECT,
+                label: 'Select Shopify Store'
+            });
+            storeSelect.isMandatory = true;
+
+            // 4. Populate dropdown from custom record
+            var storeSearch = search.create({
+                type: 'customrecord_mg_shopify_stores', 
+                columns: ['name', 'custrecord_mg_shopifystores_baseurl']
+            });
+            storeSearch.run().each(function(result) {
+                var storeName = result.getValue({ name: 'name' });
+                var storeUrl = result.getValue({ name: 'custrecord_mg_shopifystores_baseurl' });
+
+                storeSelect.addSelectOption({
+                    value: storeUrl, 
+                    text: storeName
+                });
+                return true; // Continue iteration
+            });
+
+            // 5. Add a Submit button
+            form.addSubmitButton({ label: 'Submit Order' });
+
+            // 6. Write the form to the response
+            context.response.writePage(form);
+
+        } else {
+            // POST: form submission
+            var request = context.request;
+            
+            // 1. Get form inputs
+            var shopifyOrderId = request.parameters.custpage_shopify_order_id;
+            var shopifyStoreUrl = request.parameters.custpage_shopify_store_select;
+
+            // 2. Construct payload
+            var payload = {
+                node: {
+                    id: "gid://shopify/Order/" + shopifyOrderId
+                },
+                shopifyStoreUrl: shopifyStoreUrl
+            };
+
+            // 3. Make the POST call to Integrator.io
+            var url = 'https://api.integrator.io/v1/exports/6722f0f88c7dee4cad3c9b09/vZo0YMyCBQonBEsbl5SUFLhBnqWMLLLr/data';
+            var response = https.post({
+                url: url,
+                body: JSON.stringify(payload),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            // 4. Display the response (or handle accordingly)
+            var resultForm = serverWidget.createForm({ title: 'Submission Result' });
+            var resultField = resultForm.addField({
+                id: 'custpage_result_field',
+                type: serverWidget.FieldType.INLINEHTML,
+                label: 'Result'
+            });
+
+            resultField.defaultValue = '<p><b>Status:</b> ' + response.code + '</p>'
+                                     + '<pre>' + response.body + '</pre>';
+
+            context.response.writePage(resultForm);
+        }
+    }
+
+    return {
+        onRequest: onRequest
+    }
+});
