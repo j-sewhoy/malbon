@@ -200,6 +200,7 @@
             "itemtype": itemType,
             "internalid": itemInternalId,
             "custcol_mg_parentstyle": line.custcol_mg_parentstyle,
+            "displayname": line.displayname,
             "color": line.custcol_mg_color,
             "size": line.custcol_mg_size,
             "sizesort": line.custcol_mg_sizesort!9999,
@@ -292,7 +293,8 @@
             <#assign compositeKey = gLine.custcol_mg_parentstyle + "|"
                 + cleanRate + "|"
                 + gLine.color + "|"
-                + gLine.discountRate
+                + gLine.discountRate + "|"
+                + gLine.displayname
             />
             <#if !(uniqueGroups?seq_contains(compositeKey))>
                 <#assign uniqueGroups = uniqueGroups + [compositeKey] />
@@ -306,6 +308,7 @@
             <#assign rateString         = groupParts[1] />
             <#assign colorGroup         = groupParts[2] />
             <#assign discountRateString = groupParts[3] />
+            <#assign displaynameGroup = groupParts[4] />
 
             <#assign rateNum           = rateString?number!("0.00") />
             <#assign discountRateNum   = discountRateString?number!("0.00") />
@@ -316,7 +319,8 @@
                     + (it.rate?string("0.00")?replace(",", "")?replace("$", ""))
                     + "|"
                     + it.color + "|"
-                    + it.discountRate
+                    + it.discountRate + "|"
+                    + it.displayname
                 ) == groupKey
             ) />
 
@@ -368,8 +372,11 @@
                             <!-- Style + Color -->
                             <td style="text-align: left;">
                                 ${parentStyle}
+                                <#if displaynameGroup?length?trim != "">
+                                    <br />${displaynameGroup}
+                                </#if>
                                 <#if colorGroup?length?trim != "">
-                                    <br />(${colorGroup})
+                                    <br />${colorGroup}
                                 </#if>
                             </td>
 
