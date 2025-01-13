@@ -370,14 +370,8 @@
                     <tbody>
                         <tr>
                             <!-- Style + Color -->
-                            <td style="text-align: left;">
+                            <td style="text-align: left; padding-bottom: 0px; margin-bottom: 0px">
                                 ${parentStyle}
-                                <#if displaynameGroup?length?trim != "">
-                                    <br />${displaynameGroup}
-                                </#if>
-                                <#if colorGroup?length?trim != "">
-                                    <br />${colorGroup}
-                                </#if>
                             </td>
 
                             <!-- Per-size quantity -->
@@ -432,6 +426,19 @@
                                 ${totalAmount?string("#,##0.00")}
                             </td>
                         </tr>
+<#assign colCount = sizeChunk?size + 5 />
+<#if (displaynameGroup?trim?length > 0) || (colorGroup?trim?length > 0)>
+<tr>
+  <td colspan="${colCount}" style="text-align: left; padding-top: 0px; margin-top: 0px">
+    <#if (displaynameGroup?trim?length > 0)>
+      ${displaynameGroup}
+    </#if>
+    <#if (colorGroup?trim?length > 0)>
+      - ${colorGroup}
+    </#if>
+  </td>
+</tr>
+</#if>
                     </tbody>
                 </table>
             </#list>
