@@ -448,7 +448,7 @@
             </#if>                                    </#if>
                                 </#list>
                                 <!-- Format it nicely with commas and a $ sign -->
-                                <#if totalNetAmount != 0>
+                                <#if totalNetAmount?is_number >
         ${totalNetAmount?string("$#,##0.00")}
     <#else>
         ${totalAmount?string("$#,##0.00")}
@@ -510,7 +510,7 @@
             <#if record.entity.custentity_ps_enable_convenience_fee?string == "No">
               <#assign disableFeesParam = "&amp;disableFees=true" />
               </#if>
-<a href="https://checkout-v5.paystand.com/?publishableKey=${record.custbody_ps_publishable_key}&amp;viewCheckout=portal-medium&amp;module=ns_invoice&amp;extInvoiceId=${record.custbody_paystand_guid}${record.custbody_ps_branding}${disableFeesParam}">Pay Now!</a>        </td>
+<a href="https://checkout-v5.paystand.com/?publishableKey=${record.custbody_ps_publishable_key}&amp;viewCheckout=portal-medium&amp;module=ns_invoice&amp;extInvoiceId=${record.internalid}${record.custbody_ps_branding}${disableFeesParam}">Pay Now!</a>        </td>
 
             <!-- RIGHT side: Totals Table -->
             <td style="width:60%; vertical-align: top;">
