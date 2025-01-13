@@ -206,6 +206,7 @@
             "sizesort": line.custcol_mg_sizesort!9999,
             "quantity": line.quantity,
             "amount": line.amount,
+          "netamount": line.netamount,
             "rate": line.rate,
             "discountRate": "0.00"
         } />
@@ -416,14 +417,27 @@
                             </td>
 
                             <!-- Total (net) -->
-                            <td style="text-align: right;">
+                           <td style="text-align: right;">
+                                <#assign totalNetAmount = 0 />
                                 <#assign totalAmount = 0 />
                                 <#list items as it>
                                     <#if it.itemtype != "subtotal">
-                                        <#assign totalAmount += it.amount?replace(",", "")?replace("$", "")?number!("0") />
-                                    </#if>
+                                        <#assign netStr = it.netamount?replace("(", "")?replace(")", "")?replace(",", "")?replace("$","")?trim!"" />
+                                        <#if netStr?length gt 0>
+                                            <#assign lineNet = netStr?number />
+                                            <#assign totalNetAmount += lineNet />
+                                        </#if>
+            <#assign amtStr = it.amount?replace("(", "")?replace(")", "")?replace(",", "")?replace("$","")?trim!"" />
+            <#if amtStr?length gt 0>
+                <#assign totalAmount += amtStr?number />
+            </#if>                                    </#if>
                                 </#list>
-                                ${totalAmount?string("#,##0.00")}
+                                <!-- Format it nicely with commas and a $ sign -->
+                                <#if totalNetAmount?is_number >
+        ${totalNetAmount?string("$#,##0.00")}
+    <#else>
+        ${totalAmount?string("$#,##0.00")}
+    </#if>
                             </td>
                         </tr>
 <#assign colCount = sizeChunk?size + 5 />
