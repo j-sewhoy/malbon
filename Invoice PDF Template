@@ -435,6 +435,7 @@
                             <td style="text-align: right;">
                                 <#assign totalNetAmount = 0 />
                                 <#assign totalAmount = 0 />
+                                <#assign hasNetAmount = false />
                                 <#list items as it>
                                     <#if it.itemtype != "subtotal">
                                         <#assign netStr = it.netamount?replace("(", "")?replace(")", "")?replace(",", "")?replace("$","")?trim!"" />
@@ -445,10 +446,14 @@
             <#assign amtStr = it.amount?replace("(", "")?replace(")", "")?replace(",", "")?replace("$","")?trim!"" />
             <#if amtStr?length gt 0>
                 <#assign totalAmount += amtStr?number />
-            </#if>                                    </#if>
+            </#if>                                    
+                <#if (it.netamount??) && (it.netamount?length > 0)>
+        <#assign hasNetAmount = true />
+    </#if>
+                </#if>
                                 </#list>
                                 <!-- Format it nicely with commas and a $ sign -->
-                                <#if totalNetAmount?is_number >
+                                <#if hasNetAmount >
         ${totalNetAmount?string("$#,##0.00")}
     <#else>
         ${totalAmount?string("$#,##0.00")}
