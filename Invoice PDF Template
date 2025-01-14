@@ -23,143 +23,160 @@
               src-bold="${nsfont.NotoSansThai_Bold}" bytes="2" />
     </#if>
 
-<macrolist>
-    <macro id="nlheader">
-        <table class="header" style="width: 100%; font-size: 8pt; vertical-align: top;">
-            <!-- First Line: Logo and Title -->
-            <tr>
-                <td style="width: 30%">
-                    <#if companyInformation.logoUrl?length != 0>
-                        <@filecabinet nstype="image"
-                                      style="float: left; height: 22px; width: 99px; vertical-align:top;"
-                                      src="${companyInformation.logoUrl}" />
-                    </#if>
-                </td>
-                <td style="width: 30%"></td>
-                <td style="width: 40%; text-align: center;">
-                    <span class="title">${record@title}</span>
-                </td>
-            </tr>
-            <tr>
-                <td style="width: 30%;">
-                    <span class="nameandaddress"><b>Order#:</b> ${record.tranid}</span>
-                </td>
-                <td style="width: 30%"></td>
-                <td style="text-align: left;">
-                    <span><b>Customer:</b> ${record.entity}</span>
-                </td>
-            </tr>
-            <tr>
-                <td style="width: 30%;">
-                    <span class="nameandaddress"><b>PO #:</b> ${record.otherrefnum}</span>
-                </td>
-                <td style="width: 30%"></td>
-                <td style="text-align: left;"><b>Order Type:</b> ${record.custbody_mg_order_type}</td>
-            </tr>
-            <tr>
-                <td style="width: 30%;">
-                    <span class="nameandaddress"><b>Order Date:</b> ${record.trandate}</span>
-                </td>
-                <td style="width: 30%"></td>
-                <td style="text-align: left;">
-                    <span><b>Payment Terms:</b> ${record.terms}</span>
-                </td>
-            </tr>
-            <tr>
-                <td style="width: 30%;">
-                    <span class="nameandaddress"><b>Start Date:</b> ${record.startdate}</span>
-                </td>
-                <td style="width: 30%"></td>
-                <td style="text-align: left;">
-                    <span><b>Shipping Method:</b> ${record.shipmethod}</span>
-                </td>
-            </tr>
-            <tr>
-                <td style="width: 30%;"><b>Cancel Date:</b> ${record.enddate}</td>
-                <td style="width: 30%"></td>
-                <td style="text-align: left;">
-                    <span>
-                        <#if record.custbody_mg_thirdpartyship_carrier?? && record.custbody_mg_thirdpartyship_carrier != ''>
-                            <b>3rd Party Carrier:</b> ${record.custbody_mg_thirdpartyship_carrier}
+    <!-- Macros -->
+    <macrolist>
+        <macro id="nlheader">
+            <table class="header" style="width: 100%; font-size: 8pt; vertical-align: top;">
+                <!-- First Line: Logo and Title -->
+                <tr>
+                    <td style="width: 30%">
+                        <#if companyInformation.logoUrl?length != 0>
+                            <@filecabinet nstype="image"
+                                          style="float: left; height: 22px; width: 99px; vertical-align:top;"
+                                          src="${companyInformation.logoUrl}" />
                         </#if>
-                    </span>
-                </td>
-            </tr>
-            <tr>
-                <td style="width: 30%;">
-                </td>
-                <td style="width: 30%"></td>
-                <td style="text-align: left;">
-                    <span>
-                        <#if record.custbody_mg_thirdpartyship_account?? && record.custbody_mg_thirdpartyship_account != ''>
-                            <b>3rd Party Account #:</b> ${record.custbody_mg_thirdpartyship_account}
-                        </#if>
-                    </span>
-                </td>
-            </tr>
-            <tr>
-                <td style="width: 30%;">
-                </td>
-                <td style="width: 30%"></td>
-                <td style="text-align: left;">
-                    <span><b>Page:</b> <pagenumber/> of <totalpages/></span>
-                </td>
-            </tr>
-        </table>
-    </macro>
-</macrolist>
+                    </td>
+                    <td style="width: 30%"></td>
+                    <td style="width: 40%; text-align: center;">
+                        <span class="title">${record@title}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 30%;">
+                        <span class="nameandaddress"><b>Malbon Golf, Inc.</b></span>
+                    </td>
+                    <td style="width: 30%"></td>
+                    <td style="text-align: left;">
+                        <span><b>Invoice#:</b> ${record.tranid}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 30%;">
+                        <span class="nameandaddress">1740 Stanford Street</span>
+                    </td>
+                    <td style="width: 30%"></td>
+                    <td style="text-align: left;">
+                      <span class="nameandaddress"><b>Order#:</b> ${record.createdfrom.tranid}</span>
+                      </td>
+                </tr>
+                <tr>
+                    <td style="width: 30%;">
+                        <span class="nameandaddress">Santa Monica, CA 90404-4116</span>
+                    </td>
+                    <td style="width: 30%"></td>
+                    <td style="text-align: left;">
+                        <span class="nameandaddress"><b>PO #:</b> ${record.otherrefnum}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 30%;">
+                        <span class="nameandaddress">United States of America</span>
+                    </td>
+                    <td style="width: 30%"></td>
+                    <td style="text-align: left;"><span class="nameandaddress"><b>Invoice Date:</b> ${record.trandate}</span></td>
+                </tr>
+                <tr>
+                    <td style="width: 30%;">ar@malbon.com</td>
+                    <td style="width: 30%"></td>
+                    <td style="text-align: left;">
+                      <span class="nameandaddress"><b>Due Date:</b> ${record.duedate}</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 30%;">
+                    </td>
+                    <td style="width: 30%"></td>
+                    <td style="text-align: left;">
+                      <span class="nameandaddress"><b>Payment Terms:</b> ${record.terms}</span>  
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 30%;"><span class="nameandaddress"><b>Customer:</b> ${record.entity}</span></td>
+                    <td style="width: 30%"></td>
+                    <td style="text-align: left;">
+                        <span><b>Page:</b> <pagenumber/> of <totalpages/></span>
+                    </td>
+                </tr>
+            </table>
+        </macro>
 
-<style>
-    /* Basic styling, adjust as needed */
-    * {
-        font-family: NotoSans, sans-serif;
-    }
-    table {
-        font-size: 8pt;
-        table-layout: fixed;
-    }
-    th {
-        font-weight: bold;
-        font-size: 8pt;
-        vertical-align: middle;
-        padding: 5px 6px 3px 0px;
-        background-color: #e3e3e3;
-        color: #333333;
-    }
-    td {
-        padding: 4px 0px;
-    }
-    table.header td {
-        font-size: 8pt;
-        line-height: 1.2;
-    }
-    table.itemtable th {
-        padding-bottom: 3px;
-        padding-top: 3px;
-    }
-    table.total {
-        page-break-inside: avoid;
-    }
-    tr.totalrow {
-        background-color: #e3e3e3;
-        line-height: 200%;
-    }
-    span.title {
-        font-size: 22pt;
-        line-height: 100%;
-        padding: 0px;
-        margin: 0px;
-    }
-    hr {
-        width: 100%;
-        color: #d3d3d3;
-        background-color: #d3d3d3;
-        height: 1px;
-    }
-</style>
+        <macro id="nlfooter">
+            <table style="width: 100%; font-size: 8pt;">
+                <tr>
+                    <td style="text-align: center; width: 60%;">
+                        <!-- Add your banking details here -->
+                        <b>For ACH Remittance:</b><br/>
+                        Bank Routing Number: 322271627<br/>
+                        Account Name: Malbon Golf, Inc.<br/>
+                        Account Number: 291382189
+                    </td>
+                      <td style="text-align: center; width: 40%;">
+                        <!-- Add your banking details here -->
+                        <b>For Wire Transfers:</b><br/>
+                        Bank Routing Number: 021000021<br/>
+                        SWIFT Code: CHASUS33<br/>
+                        Bank: JPMorgan Chase New York, NY 10017<br/>
+                        Account Number: 291382189<br/>
+                        Account Name: Malbon Golf, Inc.
+                    </td>
+                </tr>
+            </table>
+        </macro>
+    </macrolist>
+
+    <style>
+        /* Basic styling, adjust as needed */
+        * {
+            font-family: NotoSans, sans-serif;
+        }
+        table {
+            font-size: 8pt;
+            table-layout: fixed;
+        }
+        th {
+            font-weight: bold;
+            font-size: 8pt;
+            vertical-align: middle;
+            padding: 5px 6px 3px 0px;
+            background-color: #e3e3e3;
+            color: #333333;
+        }
+        td {
+            padding: 4px 0px;
+        }
+        table.header td {
+            font-size: 8pt;
+            line-height: 1.2;
+        }
+        table.itemtable th {
+            padding-bottom: 3px;
+            padding-top: 3px;
+        }
+        table.total {
+            page-break-inside: avoid;
+        }
+        tr.totalrow {
+            background-color: #e3e3e3;
+            line-height: 110%;
+        }
+        span.title {
+            font-size: 22pt;
+            line-height: 100%;
+            padding: 0px;
+            margin: 0px;
+        }
+        hr {
+            width: 100%;
+            color: #d3d3d3;
+            background-color: #d3d3d3;
+            height: 1px;
+        }
+    </style>
 </head>
 
-<body header="nlheader" header-height="13%" footer="nlfooter" footer-height="20pt" 
+<!-- Notice we now reference 'nlfooter' in the body. Adjust footer-height as needed. -->
+<body header="nlheader" header-height="13%" 
+      footer="nlfooter" footer-height="50pt" 
       padding="0.75in" size="Letter">
 
     <table class="addresstable" style="width: 100%; padding-top: 5px; padding-bottom: 5px;">
@@ -200,13 +217,12 @@
             "itemtype": itemType,
             "internalid": itemInternalId,
             "custcol_mg_parentstyle": line.custcol_mg_parentstyle,
-            "displayname": line.displayname,
             "color": line.custcol_mg_color,
             "size": line.custcol_mg_size,
             "sizesort": line.custcol_mg_sizesort!9999,
             "quantity": line.quantity,
             "amount": line.amount,
-          "netamount": line.netamount,
+            "netamount": line.netamount,
             "rate": line.rate,
             "discountRate": "0.00"
         } />
@@ -294,8 +310,7 @@
             <#assign compositeKey = gLine.custcol_mg_parentstyle + "|"
                 + cleanRate + "|"
                 + gLine.color + "|"
-                + gLine.discountRate + "|"
-                + gLine.displayname
+                + gLine.discountRate
             />
             <#if !(uniqueGroups?seq_contains(compositeKey))>
                 <#assign uniqueGroups = uniqueGroups + [compositeKey] />
@@ -309,7 +324,6 @@
             <#assign rateString         = groupParts[1] />
             <#assign colorGroup         = groupParts[2] />
             <#assign discountRateString = groupParts[3] />
-            <#assign displaynameGroup = groupParts[4] />
 
             <#assign rateNum           = rateString?number!("0.00") />
             <#assign discountRateNum   = discountRateString?number!("0.00") />
@@ -320,8 +334,7 @@
                     + (it.rate?string("0.00")?replace(",", "")?replace("$", ""))
                     + "|"
                     + it.color + "|"
-                    + it.discountRate + "|"
-                    + it.displayname
+                    + it.discountRate
                 ) == groupKey
             ) />
 
@@ -347,7 +360,6 @@
             <#assign paddedSizes  = sortedSizes + padding />
             <#assign chunkedSizes = paddedSizes?chunk(10) />
 
-
             <!-- Render each chunk of sizes -->
             <#list chunkedSizes as sizeChunk>
                 <table class="itemtable"
@@ -371,8 +383,11 @@
                     <tbody>
                         <tr>
                             <!-- Style + Color -->
-                            <td style="text-align: left; padding-bottom: 0px; margin-bottom: 0px">
+                            <td style="text-align: left;">
                                 ${parentStyle}
+                                <#if colorGroup?length?trim != "">
+                                    <br />(${colorGroup})
+                                </#if>
                             </td>
 
                             <!-- Per-size quantity -->
@@ -417,7 +432,7 @@
                             </td>
 
                             <!-- Total (net) -->
-                           <td style="text-align: right;">
+                            <td style="text-align: right;">
                                 <#assign totalNetAmount = 0 />
                                 <#assign totalAmount = 0 />
                                 <#list items as it>
@@ -440,19 +455,6 @@
     </#if>
                             </td>
                         </tr>
-<#assign colCount = sizeChunk?size + 5 />
-<#if (displaynameGroup?trim?length > 0) || (colorGroup?trim?length > 0)>
-<tr>
-  <td colspan="${colCount}" style="text-align: left; padding-top: 0px; margin-top: 0px">
-    <#if (displaynameGroup?trim?length > 0)>
-      ${displaynameGroup}
-    </#if>
-    <#if (colorGroup?trim?length > 0)>
-      - ${colorGroup}
-    </#if>
-  </td>
-</tr>
-</#if>
                     </tbody>
                 </table>
             </#list>
@@ -487,19 +489,78 @@
 
     <hr />
 
-    <!-- Totals -->
-    <table class="total" style="width: 100%;">
-        <tr class="totalrow">
-            <td background-color="#ffffff" colspan="4"></td>
-            <td align="right"><b>Total Quantity</b></td>
-            <td align="right">${totalPOQuantity?string("#,##0")}</td>
-        </tr>
-        <tr class="totalrow">
-            <td background-color="#ffffff" colspan="4"></td>
-            <td align="right"><b>Total Value</b></td>
-            <td align="right">${record.total?string("#,##0.00")}</td>
+
+
+    <!-- 3) BIG WRAPPER TABLE: Left for Tracking, Right for Totals -->
+    <table style="width:100%; border-collapse: collapse;">
+        <tr>
+            <!-- LEFT side: multi-line or repeated Tracking Numbers -->
+<td style="width:40%; vertical-align: top;">
+  <b>Shipping Method:</b> ${record.shipmethod}<br/><br/>
+    <#-- Safely split trackingnumbers (handle if it's null or empty) -->
+    <#assign trackingList = (record.linkedtrackingnumbers?trim!"" )?split(" ") />
+    <#if trackingList?size gt 0>
+        <b>Tracking Numbers:</b><br/>
+        <#list trackingList as t>
+            ${t}<br/>
+        </#list>
+    </#if>
+          <br/>
+          <#assign disableFeesParam = "" />
+            <#if record.entity.custentity_ps_enable_convenience_fee?string == "No">
+              <#assign disableFeesParam = "&amp;disableFees=true" />
+              </#if>
+<a href="https://checkout-v5.paystand.com/?publishableKey=${record.custbody_ps_publishable_key}&amp;viewCheckout=portal-medium&amp;module=ns_invoice&amp;extInvoiceId=${record.internalid}${record.custbody_ps_branding}${disableFeesParam}">Pay Now!</a>        </td>
+
+            <!-- RIGHT side: Totals Table -->
+            <td style="width:60%; vertical-align: top;">
+                <table class="total" style="width: 100%;">
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Total Quantity</b></td>
+                        <td align="right">${totalPOQuantity?string("#,##0")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Subtotal</b></td>
+                        <td align="right">${record.subtotal?string("$#,##0.00")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Tax Total</b></td>
+                        <td align="right">${record.taxtotal?string("$#,##0.00")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Shipping Cost</b></td>
+                        <td align="right">
+                            <#if record.shippingcost == 0>
+                                $0.00
+                            <#else>
+                                ${record.shippingcost}
+                            </#if>
+                        </td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Total Value</b></td>
+                        <td align="right">${record.total?string("$#,##0.00")}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Amount Paid</b></td>
+                        <td align="right">${record.amountpaid}</td>
+                    </tr>
+                    <tr class="totalrow">
+                        <td background-color="#ffffff" colspan="1"></td>
+                        <td align="right"><b>Amount Due</b></td>
+                        <td align="right">${record.amountremaining}</td>
+                    </tr>
+                </table>
+            </td>
         </tr>
     </table>
+
 </#if>
 </body>
 </pdf>
