@@ -217,6 +217,7 @@
             "itemtype": itemType,
             "internalid": itemInternalId,
             "custcol_mg_parentstyle": line.custcol_mg_parentstyle,
+            "displayname": line.displayname,
             "color": line.custcol_mg_color,
             "size": line.custcol_mg_size,
             "sizesort": line.custcol_mg_sizesort!9999,
@@ -310,7 +311,8 @@
             <#assign compositeKey = gLine.custcol_mg_parentstyle + "|"
                 + cleanRate + "|"
                 + gLine.color + "|"
-                + gLine.discountRate
+                + gLine.discountRate + "|"
+                + gLine.displayname
             />
             <#if !(uniqueGroups?seq_contains(compositeKey))>
                 <#assign uniqueGroups = uniqueGroups + [compositeKey] />
@@ -324,6 +326,7 @@
             <#assign rateString         = groupParts[1] />
             <#assign colorGroup         = groupParts[2] />
             <#assign discountRateString = groupParts[3] />
+            <#assign displaynameGroup = groupParts[4] />  
 
             <#assign rateNum           = rateString?number!("0.00") />
             <#assign discountRateNum   = discountRateString?number!("0.00") />
@@ -334,7 +337,8 @@
                     + (it.rate?string("0.00")?replace(",", "")?replace("$", ""))
                     + "|"
                     + it.color + "|"
-                    + it.discountRate
+                    + it.discountRate + "|"
+                    + it.displayname
                 ) == groupKey
             ) />
 
@@ -383,11 +387,8 @@
                     <tbody>
                         <tr>
                             <!-- Style + Color -->
-                            <td style="text-align: left;">
+                            <td style="text-align: left; padding-bottom: 0px; margin-bottom: 0px">
                                 ${parentStyle}
-                                <#if colorGroup?length?trim != "">
-                                    <br />(${colorGroup})
-                                </#if>
                             </td>
 
                             <!-- Per-size quantity -->
@@ -460,6 +461,20 @@
     </#if>
                             </td>
                         </tr>
+      <#assign colCount = sizeChunk?size + 5 />
+
+      <#if (displaynameGroup?trim?length > 0) || (colorGroup?trim?length > 0)>
+<tr>
+  <td colspan="${colCount}" style="text-align: left; padding-top: 0px; margin-top: 0px">
+    <#if (displaynameGroup?trim?length > 0)>
+      ${displaynameGroup}
+    </#if>
+    <#if (colorGroup?trim?length > 0)>
+      - ${colorGroup}
+    </#if>
+  </td>
+</tr>
+</#if>
                     </tbody>
                 </table>
             </#list>
