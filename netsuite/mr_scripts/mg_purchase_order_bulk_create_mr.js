@@ -77,9 +77,11 @@ define([
                 'custrecord_mg_poc_qtyvalidation_marketin',
                 // Dates & notes
                 'custrecord_mg_poc_inhousedate',
+                'custrecord_mg_poc_exfactorydate',
                 'custrecord_mg_poc_podate',
                 'custrecord_mg_poc_mgnotes_internal',
                 'custrecord_mg_poc_fobunitcost',
+                'owner',
                 // Script statuses for each warehouse
                 'custrecord_mg_poc_scriptstatusecom',
                 'custrecord_mg_poc_scriptstatusretail',
@@ -125,6 +127,7 @@ define([
                 recId:           recId,
                 item:            val('custrecord_mg_poc_item'),
                 vendor:          val('custrecord_mg_poc_vendor'),
+                owner:           val('owner'), 
                 // Warehouse quantities
                 qty_ecom:        parseFloatOrZero(val('custrecord_mg_poc_ecomwarehouse')),
                 qty_retail:      parseFloatOrZero(val('custrecord_mg_poc_retailwarehouse')),
@@ -145,6 +148,7 @@ define([
                 val_marketing:   parseFloatOrZero(val('custrecord_mg_poc_qtyvalidation_marketin')),
                 // Dates & notes
                 inHouseDate:     val('custrecord_mg_poc_inhousedate'),
+                exFactoryDate:     val('custrecord_mg_poc_exfactorydate'),
                 poDate:          val('custrecord_mg_poc_podate'),
                 notes:           val('custrecord_mg_poc_mgnotes_internal'),
                 unitCost:        parseFloatOrZero(val('custrecord_mg_poc_fobunitcost')),
@@ -218,8 +222,10 @@ define([
         var totalValidation = 0;
         var vendor          = null;
         var inHouseDate     = null;
+        var exFactoryDate   = null;
         var poDate          = null;
         var notes           = null;
+        var owner           = null;  
 
         // Gather line data for PO
         var lineData   = [];
@@ -260,8 +266,11 @@ define([
 
             if (!vendor)       vendor      = obj.vendor;
             if (!inHouseDate)  inHouseDate = obj.inHouseDate;
+            if (!exFactoryDate)  exFactoryDate = obj.exFactoryDate;
             if (!poDate)       poDate      = obj.poDate;
             if (!notes)        notes       = obj.notes;
+            if (!owner)        owner       = obj.owner; 
+        }
 
             lineData.push({
                 recId:    obj.recId,
@@ -343,8 +352,10 @@ define([
                 warehouse:    warehouse,
                 externalId:   externalId,
                 inHouseDate:  inHouseDate,
+                exFactoryDate: exFactoryDate,
                 poDate:       poDate,
                 notes:        notes,
+                enteredBy:        owner,
                 lines:        lineData
             });
 
@@ -434,6 +445,15 @@ define([
             }
         }
 
+      // exFactoryDate -> custbody_mg_exfactorydate + custbody_mg_exfactorydate_original
+        if (params.exFactoryDate) {
+            var exFactoryDateObj = parseDate(params.exFactoryDate);
+            if (exFactoryDateObj) {
+                poRec.setValue({ fieldId: 'custbody_mg_exfactorydate', value: exFactoryDateObj });
+                poRec.setValue({ fieldId: 'custbody_mg_exfactorydate_original', value: exFactoryDateObj });
+            }
+        }
+
         // externalId -> both record externalid + custbody_mg_ext_order_number
         if (params.externalId) {
             poRec.setValue({ fieldId: 'externalid', value: params.externalId });
@@ -443,6 +463,11 @@ define([
         // notes -> custbody_mg_notes
         if (params.notes) {
             poRec.setValue({ fieldId: 'custbody_mg_notes', value: params.notes });
+        }
+
+        // enteredBy -> custbody_mg_enteredby
+        if (params.enteredBy) {
+            poRec.setValue({ fieldId: 'custbody_mg_enteredby', value: params.enteredBy });
         }
 
         // Add PO lines
